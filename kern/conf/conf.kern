@@ -387,6 +387,12 @@ file      syscall/time_syscalls.c
 file      main/main.c
 file      main/menu.c
 
+########################################
+#                                      #
+#             Base version             #
+#                                      #
+########################################
+
 defoption hello
 optfile hello main/hello.c
 
@@ -400,9 +406,16 @@ optfile proc_syscall syscall/proc_syscalls.c
 
 # support for process management and waitpid syscall
 defoption proc_manage
-
 # vm support
 defoption vm_manage
+
+########################################
+
+# SDP project
+# defoption paging              # General
+defoption tlb_manage          # Ruggero
+defoption ondemande_manage    # Matteo
+defoption swap_manage         # Samuele
 
 ########################################
 #                                      #
