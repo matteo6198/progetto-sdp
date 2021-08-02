@@ -41,6 +41,7 @@ options proc_syscall		# enables the implementation of sys__exit() syscall and ot
 
 options vm_manage		# enables the virtual memory management
 
+options proc_manage		# enables syscall exit and wait
 
 # SDP Project
 
