@@ -33,7 +33,7 @@ options sfs			# Always use the file system
 
 options dumbvm			# Chewing gum and baling wire.
 
-options hello			#prints hello world in main
+#options hello			#prints hello world in main
 
 options read_write		# enables syscalls read and write
 
@@ -45,7 +45,7 @@ options proc_manage		# enables syscall exit and wait
 
 # SDP Project
 
-# options paging              # General
+options paging              # General
 options tlb_manage          # Ruggero
 options ondemande_manage    # Matteo
 options swap_manage         # Samuele
