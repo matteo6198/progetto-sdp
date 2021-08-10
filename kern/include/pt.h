@@ -1,6 +1,8 @@
 #ifndef _PT_H
 #define _PT_H
 
+#define STACKPAGES  18
+
 #include "opt-ondemande_manage.h"
 
 #include <types.h>
@@ -43,9 +45,9 @@ void pt_bootstrap(void);
 int pt_get_page(vaddr_t v_addr);
 
 /* insert n_pages pages into the page table without allocating them in RAM */
-int pt_insert(vaddr_t v_addr, int n_pages, int read, int write, int exec);
+int pt_insert(vaddr_t v_addr, unsigned int n_pages, int read, int write, int exec);
 
 /* delete all pages of this process from page table */
-void pt_delete_PID();
+void pt_delete_PID(void);
 
 #endif

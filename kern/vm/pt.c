@@ -1,6 +1,6 @@
 #include <pt.h>
 
-#define STACKPAGES  18
+#define ERR_CODE 1
 
 struct pt* pagetable;
 static int nRamFrames = 0;
@@ -35,21 +35,71 @@ static int pt_hash(vaddr_t v_addr){
 }
 
 /* select the victim page among the one in RAM */
-static int pt_get_victim(){
-
+static int pt_get_victim(void){
+    return 0;
 }
 
 /* returns the entry corresponding to the page associated to the address v_addr (if that page is not in memory it will be loaded)*/
 int pt_get_page(vaddr_t v_addr){
-    v_addr = v_addr & PAGE_FRAME;   // mask to get page number 
-    int index = pt_hash(v_addr);
-    /* ricerca e inserimento se necessario nella pt */
-    return pagetable[index].entry;
+    v_addr &= PAGE_FRAME;/*
+    // ricerca nella PT
+    int found = 0;
+    struct pt* ptr = pagetable + pt_hash(v_addr);
+    while(ptr!=NULL && ptr->entry != NULL){
+        if(PT_PID(ptr->entry) == curproc->pid 
+            && PT_V_ADDR(ptr->entry) == v_addr){
+                found = 1;
+                if(PT_RAM(ptr->entry))
+                    return TLB_insert(ptr->entry);  // inserisco nella TLB
+                else
+                    break;
+            }
+        ptr = ptr->next;
+    }
+    if(!found){
+        // page not found
+        return ERR_CODE;
+    }
+
+    paddr_t ram_page_number = getFreePages(1);  // ritorna 0 se no frame libere
+    if(!ram_page_number){
+        int victim = pt_get_victim();   // page replacement 
+        int result = swap_out(PT_P_ADDR((&pagetable[victim])->entry));   
+        if(!result){
+            // impossibile fare swap (frose serve kill al processo corrente)
+            return ERR_CODE;
+        }
+        // aggiornamento PT
+
+        ram_page_number = PT_P_ADDR(pagetable[victim].entry);
+    }
+    // aggiornamento entry nell PT e inserimento nella TLB
+    ptr->entry->lo &= 0xFFF; // clear dei bit
+    ptr->entry->lo |= ram_page_number;  // insert del physycal addr
+    TLB_insert(ptr->entry);     // la TLB deve essere settata prima di fare le operazioni di lettura
+
+    if(PT_SWAP(ptr->entry)){
+        if(!swap_in(v_addr)){
+            // stop processo corrente
+            return ERR_CODE;
+        }
+
+        // aggiornamento PT (set RAM bit, clear SWAP bit)
+    }else{
+        // load della pagina da disco
+        if(!load_page(v_addr)){
+            // stop processo corrente 
+            return ERR_CODE;
+        }
+        // aggiornamento PT (set RAM bit)
+    }
+*/
+    return 0;
 }
 
 /* insert n_pages pages into the page table without allocating them in RAM */
-int pt_insert(vaddr_t v_addr, int n_pages, int read, int write, int exec){
-    int i;
+int pt_insert(vaddr_t v_addr, unsigned int n_pages, int read, int write, int exec){
+    unsigned int i;
     struct pt* ptr, *tmp;
     struct pt_entry* entry;
     int flags = 0;
@@ -88,9 +138,9 @@ int pt_insert(vaddr_t v_addr, int n_pages, int read, int write, int exec){
 }
 
 /* delete all pages of this process from page table */
-void pt_delete_PID(){
+void pt_delete_PID(void){
     struct addrspace* as = proc_getas();
-    int i;
+    unsigned int i;
     struct pt* tmp, *prev;
     vaddr_t addr;
     /* clean first segment */

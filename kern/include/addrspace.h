@@ -37,6 +37,7 @@
 
 #include <vm.h>
 #include "opt-dumbvm.h"
+#include "opt-ondemande_manage.h"
 
 struct vnode;
 
@@ -50,6 +51,17 @@ struct vnode;
 
 struct addrspace {
 #if OPT_DUMBVM
+#if OPT_ONDEMANDE_MANAGE        
+        vaddr_t as_vbase1;
+        size_t as_npages1;
+        off_t as_offset1;
+        size_t as_filesize1;
+        vaddr_t as_vbase2;
+        size_t as_npages2;
+        off_t as_offset2;
+        size_t as_filesize2;
+        char as_flags;             /* contains the RWX flags for each of the 2 segments (- - R2 W2 X2 R1 W1 X1)*/
+#else
         vaddr_t as_vbase1;
         paddr_t as_pbase1;
         size_t as_npages1;
@@ -57,8 +69,8 @@ struct addrspace {
         paddr_t as_pbase2;
         size_t as_npages2;
         paddr_t as_stackpbase;
+#endif
 #else
-        /* Put stuff here for your VM system */
 #endif
 };
 
@@ -109,12 +121,22 @@ void              as_activate(void);
 void              as_deactivate(void);
 void              as_destroy(struct addrspace *);
 
+#if OPT_ONDEMANDE_MANAGE
+int               as_define_region(struct addrspace *as,
+                                   vaddr_t vaddr, size_t sz,
+                                   int readable,
+                                   int writeable,
+                                   int executable,
+                                   off_t offset,
+                                   size_t filesize);
+#else
 int               as_define_region(struct addrspace *as,
                                    vaddr_t vaddr, size_t sz,
                                    int readable,
                                    int writeable,
                                    int executable);
 int               as_prepare_load(struct addrspace *as);
+#endif
 int               as_complete_load(struct addrspace *as);
 int               as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
 
