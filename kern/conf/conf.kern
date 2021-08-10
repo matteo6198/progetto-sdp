@@ -417,6 +417,8 @@ defoption tlb_manage          # Ruggero
 defoption ondemande_manage    # Matteo
 defoption swap_manage         # Samuele
 
+optfile ondemande_manage vm/pt.c
+
 ########################################
 #                                      #
 #             Filesystems              #
