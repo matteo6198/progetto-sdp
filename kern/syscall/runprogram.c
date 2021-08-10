@@ -45,6 +45,8 @@
 #include <syscall.h>
 #include <test.h>
 
+#include <opt-ondemande_manage.h>
+
 /*
  * Load program "progname" and start running it in usermode.
  * Does not return except on error.
@@ -78,7 +80,9 @@ runprogram(char *progname)
 	/* Switch to it and activate it. */
 	proc_setas(as);
 	as_activate();
-
+#if OPT_ONDEMANDE_MANAGE
+	curproc->p_elf = v;
+#endif
 	/* Load the executable. */
 	result = load_elf(v, &entrypoint);
 	if (result) {
@@ -87,8 +91,10 @@ runprogram(char *progname)
 		return result;
 	}
 
+#if !OPT_ONDEMANDE_MANAGE
 	/* Done with the file now. */
 	vfs_close(v);
+#endif
 
 	/* Define the user stack in the address space */
 	result = as_define_stack(as, &stackptr);

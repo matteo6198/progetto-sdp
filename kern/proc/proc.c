@@ -137,6 +137,9 @@ proc_create(const char *name)
 
 	/* VFS fields */
 	proc->p_cwd = NULL;
+#if OPT_ONDEMANDE_MANAGE
+	proc->p_elf = NULL;
+#endif
 	return proc;
 }
 
@@ -167,6 +170,10 @@ struct proc* proc_dup(struct proc* proc){
   for(i=0;i<OPEN_MAX;i++){
     new_proc->open_files[i] = proc->open_files[i];
   }
+#endif
+#if OPT_ONDEMANDE_MANAGE
+	new_proc->p_elf = proc->p_elf;
+	vnode_incref(new_proc->p_elf);
 #endif
   /* setup parent */
   new_proc->parent = proc;
@@ -267,6 +274,9 @@ proc_destroy(struct proc *proc)
 	if(proc->ended_sem != NULL)
 	  sem_destroy(proc->ended_sem);
 	remove_proc(proc->pid);
+#endif
+#if OPT_ONDEMANDE_MANAGE
+	vfs_close(proc->p_elf);
 #endif
 	kfree(proc->p_name);
 	kfree(proc);

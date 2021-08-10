@@ -39,6 +39,7 @@
 #include <spinlock.h>
 #include <opt-read_write.h>
 #include <opt-proc_manage.h>
+#include <opt-ondemande_manage.h>
 #include <synch.h>
 #include <types.h>
 
@@ -88,6 +89,10 @@ struct proc {
 #endif
 #if OPT_READ_WRITE
   struct openfile* open_files[OPEN_MAX];
+#endif
+
+#if OPT_ONDEMANDE_MANAGE
+	struct vnode* p_elf;
 #endif
 };
 
