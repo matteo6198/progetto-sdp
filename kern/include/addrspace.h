@@ -37,7 +37,7 @@
 
 #include <vm.h>
 #include "opt-dumbvm.h"
-#include "opt-ondemande_manage.h"
+#include "opt-ondemand_manage.h"
 
 struct vnode;
 
@@ -50,8 +50,8 @@ struct vnode;
  */
 
 struct addrspace {
-#if OPT_DUMBVM
-#if OPT_ONDEMANDE_MANAGE        
+
+#if OPT_ONDEMAND_MANAGE        
         vaddr_t as_vbase1;
         size_t as_npages1;
         off_t as_offset1;
@@ -61,7 +61,7 @@ struct addrspace {
         off_t as_offset2;
         size_t as_filesize2;
         char as_flags;             /* contains the RWX flags for each of the 2 segments (- - R2 W2 X2 R1 W1 X1)*/
-#else
+#elif OPT_DUMBVM
         vaddr_t as_vbase1;
         paddr_t as_pbase1;
         size_t as_npages1;
@@ -69,8 +69,8 @@ struct addrspace {
         paddr_t as_pbase2;
         size_t as_npages2;
         paddr_t as_stackpbase;
-#endif
 #else
+        /* nothing */
 #endif
 };
 
@@ -121,7 +121,7 @@ void              as_activate(void);
 void              as_deactivate(void);
 void              as_destroy(struct addrspace *);
 
-#if OPT_ONDEMANDE_MANAGE
+#if OPT_ONDEMAND_MANAGE
 int               as_define_region(struct addrspace *as,
                                    vaddr_t vaddr, size_t sz,
                                    int readable,

@@ -60,8 +60,8 @@
 #include <vnode.h>
 #include <elf.h>
 
-#include "opt-ondemande_manage.h"
-#if !OPT_ONDEMANDE_MANAGE
+#include "opt-ondemand_manage.h"
+#if !OPT_ONDEMAND_MANAGE
 /*
  * Load a segment at virtual address VADDR. The segment in memory
  * extends from VADDR up to (but not including) VADDR+MEMSIZE. The
@@ -244,7 +244,7 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 				ph.p_type);
 			return ENOEXEC;
 		}
-#if OPT_ONDEMANDE_MANAGE
+#if OPT_ONDEMAND_MANAGE
 		result = as_define_region(as,
 					  ph.p_vaddr, ph.p_memsz,
 					  ph.p_flags & PF_R,
@@ -263,7 +263,7 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 			return result;
 		}
 	}
-#if !OPT_ONDEMANDE_MANAGE
+#if !OPT_ONDEMAND_MANAGE
 	result = as_prepare_load(as);
 	if (result) {
 		return result;

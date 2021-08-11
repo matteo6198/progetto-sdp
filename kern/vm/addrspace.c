@@ -61,7 +61,7 @@ as_create(void)
 	as->as_npages1 = 0;
 	as->as_vbase2 = 0;
 	as->as_npages2 = 0;
-#if OPT_ONDEMANDE_MANAGE
+#if OPT_ONDEMAND_MANAGE
 	as->as_offset1 = 0;
 	as->as_filesize1 = 0;
 	as->as_offset2 = 0;
@@ -78,7 +78,7 @@ as_create(void)
 void as_destroy(struct addrspace *as)
 {
 	vm_can_sleep();
-#if OPT_ONDEMANDE_MANAGE
+#if OPT_ONDEMAND_MANAGE
 	pt_delete_PID();
 #else
 	free_kpages(PADDR_TO_KVADDR(as->as_pbase1));
@@ -115,7 +115,7 @@ void as_deactivate(void)
 	/* nothing */
 }
 
-#if OPT_ONDEMANDE_MANAGE
+#if OPT_ONDEMAND_MANAGE
 int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 					 int readable, int writeable, int executable,
 					 off_t offset, size_t filesize)
@@ -216,7 +216,8 @@ as_zero_region(paddr_t paddr, unsigned npages)
 {
 	bzero((void *)PADDR_TO_KVADDR(paddr), npages * PAGE_SIZE);
 }
-#if !OPT_ONDEMANDE_MANAGE
+
+#if !OPT_ONDEMAND_MANAGE
 int as_prepare_load(struct addrspace *as)
 {
 	KASSERT(as->as_pbase1 == 0);
@@ -250,6 +251,7 @@ int as_prepare_load(struct addrspace *as)
 	return 0;
 }
 #endif
+
 int as_complete_load(struct addrspace *as)
 {
 	vm_can_sleep();
@@ -259,7 +261,9 @@ int as_complete_load(struct addrspace *as)
 
 int as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 {
-#if OPT_ONDEMANDE_MANAGE
+	(void)as;
+#if OPT_ONDEMAND_MANAGE
+	//TODO: what to do with as?
 	pt_insert(USERSTACK - STACKPAGES * PAGE_SIZE, STACKPAGES, 1, 1, 0);
 #else
 	KASSERT(as->as_stackpbase != 0);
@@ -284,7 +288,8 @@ int as_copy(struct addrspace *old, struct addrspace **ret)
 	new->as_npages1 = old->as_npages1;
 	new->as_vbase2 = old->as_vbase2;
 	new->as_npages2 = old->as_npages2;
-#if OPT_ONDEMANDE_MANAGE
+
+#if OPT_ONDEMAND_MANAGE
 	new->as_offset2 = old->as_offset2;
 	new->as_filesize2 = old->as_filesize2;
 	new->as_offset1 = old->as_offset1;
@@ -293,10 +298,10 @@ int as_copy(struct addrspace *old, struct addrspace **ret)
 
 	pt_insert(new->as_vbase1, new->as_npages1, (new->as_flags & 4), (new->as_flags & 2), (new->as_flags & 1));
 	pt_insert(new->as_vbase2, new->as_npages2, new->as_flags & 0x20, new->as_flags & 0x10, new->as_flags & 8 );
-	pt_insert(USERSTACK - STACKPAGES * PAGE_SIZE, STACKPAGES, 1, 1, 0)
+	pt_insert(USERSTACK - STACKPAGES * PAGE_SIZE, STACKPAGES, 1, 1, 0);
 #endif
 
-#if !OPT_ONDEMANDE_MANAGE
+#if !OPT_ONDEMAND_MANAGE
 	/* (Mis)use as_prepare_load to allocate some physical memory. */
 	if (as_prepare_load(new))
 	{
@@ -320,6 +325,7 @@ int as_copy(struct addrspace *old, struct addrspace **ret)
 			(const void *)PADDR_TO_KVADDR(old->as_stackpbase),
 			DUMBVM_STACKPAGES * PAGE_SIZE);
 #endif
+
 	*ret = new;
 	return 0;
 }

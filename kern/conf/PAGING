@@ -31,7 +31,8 @@ options semfs			# Semaphores for userland
 options sfs			# Always use the file system
 #options netfs			# You might write this as a project.
 
-options dumbvm			# Chewing gum and baling wire.
+#disabling dumbvm
+#options dumbvm			# Chewing gum and baling wire.
 
 #options hello			#prints hello world in main
 
@@ -47,5 +48,5 @@ options proc_manage		# enables syscall exit and wait
 
 options paging              # General
 options tlb_manage          # Ruggero
-options ondemande_manage    # Matteo
+options ondemand_manage    # Matteo
 options swap_manage         # Samuele

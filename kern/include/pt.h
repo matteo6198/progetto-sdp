@@ -3,7 +3,7 @@
 
 #define STACKPAGES  18
 
-#include "opt-ondemande_manage.h"
+#include "opt-ondemand_manage.h"
 
 #include <types.h>
 #include <kern/errno.h>

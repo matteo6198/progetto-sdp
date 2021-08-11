@@ -414,10 +414,10 @@ defoption vm_manage
 # SDP project
 defoption paging              # General
 defoption tlb_manage          # Ruggero
-defoption ondemande_manage    # Matteo
-defoption swap_manage         # Samuele
+defoption ondemand_manage    # Matteo
+optfile ondemand_manage vm/pt.c
 
-optfile ondemande_manage vm/pt.c
+defoption swap_manage         # Samuele
 
 ########################################
 #                                      #
