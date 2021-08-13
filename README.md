@@ -51,3 +51,18 @@ understand how these functions work.
 In this directory, the file tlb.h defines the functions that are used to manipulate the TLB. In 
 addition, vm.h includes some macros and constants related to address translation on the 
 MIPS. Note that this vm.h is different from the vm.h in kern/include.
+
+## Note
+
+You are free and will need to modify existing kernel code in addition you’ll probably need 
+some code to create and use some new abstractions. If you uses any or all of the following 
+abstractions please place that code in the directory kern/vm using the following file names: 
+• coremap.c: keep track of free physical frames  
+• pt.c: page tables and page table entry manipulation go here  
+• segments.c: code for tracking and manipulating segments 
+• vm_tlb.c: code for manipulating the tlb (including replacement) 
+• swapfile.c: code for managing and manipulating the swapfile 
+• vmstats.c: code for tracking stats
+If you need them, corresponding header files should be placed in os161-1.11/kern/include 
+in files named: addrspace.h, coremap.h, pt.h, segments.h, vm_tlb.h, vmstats.h, and 
+swapfile.h. 
