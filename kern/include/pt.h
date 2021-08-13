@@ -3,6 +3,10 @@
 
 #define STACKPAGES  18
 
+
+// Errors
+#define ERR_CODE 1
+
 #include "opt-ondemand_manage.h"
 
 #include <types.h>
@@ -29,8 +33,8 @@
 #define PT_EXEC(entry)   ((entry->lo & 32) >> 5)
 
 struct pt_entry{
-    int lo;     /* contains p_addr and flags */
     int hi;     /* contains v_addr and pid */
+    int lo;     /* contains p_addr and flags */
 };
 
 struct pt{

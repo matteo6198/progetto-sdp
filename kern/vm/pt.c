@@ -1,7 +1,5 @@
 #include <pt.h>
 
-#define ERR_CODE 1
-
 struct pt* pagetable;
 static int nRamFrames = 0;
 static int hash_mask = 0;
