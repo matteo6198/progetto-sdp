@@ -40,6 +40,7 @@
 #include <mainbus.h>
 #include <syscall.h>
 
+#include <opt-tlb_manage.h>
 
 /* in exception-*.S */
 extern __DEAD void asm_usermode(struct trapframe *tf);
@@ -108,13 +109,17 @@ kill_curthread(vaddr_t epc, unsigned code, vaddr_t vaddr)
 		break;
 	}
 
+#if OPT_TLB_MANAGE
 	/*
-	 * You will probably want to change this.
+	 * TODO: debug this part
 	 */
 
 	kprintf("Fatal user mode trap %u sig %d (%s, epc 0x%x, vaddr 0x%x)\n",
 		code, sig, trapcodenames[code], epc, vaddr);
+	sys__exit(-1);
+#else
 	panic("I don't know how to handle this\n");
+#endif
 }
 
 /*
