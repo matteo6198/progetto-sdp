@@ -60,7 +60,7 @@ struct addrspace {
         size_t as_npages2;
         off_t as_offset2;
         size_t as_filesize2;
-        char as_flags;             /* contains the RWX flags for each of the 2 segments (- - R2 W2 X2 R1 W1 X1)*/
+        uint8_t as_flags;             /* contains the RWX flags for each of the 2 segments (- - R2 W2 X2 R1 W1 X1)*/
 #elif OPT_DUMBVM
         vaddr_t as_vbase1;
         paddr_t as_pbase1;
