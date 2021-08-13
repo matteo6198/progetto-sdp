@@ -27,14 +27,14 @@
  * SUCH DAMAGE.
  */
 
-#include <types.h>
+#include <current.h>
 #include <kern/errno.h>
 #include <kern/syscall.h>
 #include <lib.h>
 #include <mips/trapframe.h>
-#include <thread.h>
-#include <current.h>
 #include <syscall.h>
+#include <thread.h>
+#include <types.h>
 
 /*
  * System call dispatcher.
@@ -74,8 +74,7 @@
  * stack, starting at sp+16 to skip over the slots for the
  * registerized values, with copyin().
  */
-void
-syscall(struct trapframe *tf)
+void syscall(struct trapframe *tf)
 {
 	int callno;
 	int32_t retval;
@@ -98,91 +97,93 @@ syscall(struct trapframe *tf)
 
 	retval = 0;
 
-	switch (callno) {
-	    case SYS_reboot:
+	switch (callno)
+	{
+	case SYS_reboot:
 		err = sys_reboot(tf->tf_a0);
 		break;
 
-	    case SYS___time:
+	case SYS___time:
 		err = sys___time((userptr_t)tf->tf_a0,
-				 (userptr_t)tf->tf_a1);
+						 (userptr_t)tf->tf_a1);
 		break;
 
-	    /* Add stuff here */
+		/* Add stuff here */
 #if OPT_READ_WRITE
-	    case SYS_read:
-	      err = 0;
-	      retval = sys_read((int) tf->tf_a0, (void*)tf->tf_a1, (int)tf->tf_a2);
-	      if(retval < 0)
-		err = -retval;
-	      break;
-            case SYS_write:
-	      err = 0;
-	      retval = sys_write((int) tf->tf_a0, (void*)tf->tf_a1, (int)tf->tf_a2);
-	      if(retval < 0)
-		err = -retval;
-	      break;
+	case SYS_read:
+		err = 0;
+		retval = sys_read((int)tf->tf_a0, (void *)tf->tf_a1, (int)tf->tf_a2);
+		if (retval < 0)
+			err = -retval;
+		break;
+	case SYS_write:
+		err = 0;
+		retval = sys_write((int)tf->tf_a0, (void *)tf->tf_a1, (int)tf->tf_a2);
+		if (retval < 0)
+			err = -retval;
+		break;
 	case SYS_open:
-	  err = 0;
-	  retval = sys_open((char*) tf->tf_a0, (int) tf->tf_a1);
-	  if(retval < 0)
-	    err = -retval;
-	  break;
+		err = 0;
+		retval = sys_open((char *)tf->tf_a0, (int)tf->tf_a1);
+		if (retval < 0)
+			err = -retval;
+		break;
 	case SYS_close:
-	  err = 0;
-	  retval = sys_close((int) tf->tf_a0);
-	  if(retval < 0)
-	    err = -retval;
-	  break;
+		err = 0;
+		retval = sys_close((int)tf->tf_a0);
+		if (retval < 0)
+			err = -retval;
+		break;
 #endif
 #if OPT_PROC_SYSCALL
 	case SYS__exit:
-	  err = 0;
-	  sys__exit((int) tf->tf_a0);
-	  break;
+		err = 0;
+		sys__exit((int)tf->tf_a0);
+		break;
 #endif
 #if OPT_PROC_MANAGE
 	case SYS_waitpid:
-	  err = 0;
-	  retval = sys_waitpid((pid_t) tf->tf_a0, (int*) tf->tf_a1, (int) tf->tf_a2);
-	  if(retval < 0)
-	    err = retval;
-	  break;
+		err = 0;
+		retval = sys_waitpid((pid_t)tf->tf_a0, (int *)tf->tf_a1, (int)tf->tf_a2);
+		if (retval < 0)
+			err = retval;
+		break;
 	case SYS_getpid:
-	  err = 0;
-	  retval = sys_getpid();
-	  break;
+		err = 0;
+		retval = sys_getpid();
+		break;
 	case SYS_getppid:
-	  err = 0;
-	  retval = sys_getppid();
-	  break;
+		err = 0;
+		retval = sys_getppid();
+		break;
 	case SYS_fork:
-	  err = 0;
-	  retval = sys_fork(tf);
-	  if(retval < 0)
-	    err = -retval;
-	  break;
+		err = 0;
+		retval = sys_fork(tf);
+		if (retval < 0)
+			err = -retval;
+		break;
 #endif
-	    default:
+	default:
 		kprintf("Unknown syscall %d\n", callno);
 		err = ENOSYS;
 		break;
 	}
 
-
-	if (err) {
+	if (err)
+	{
 		/*
 		 * Return the error code. This gets converted at
 		 * userlevel to a return value of -1 and the error
 		 * code in errno.
 		 */
 		tf->tf_v0 = err;
-		tf->tf_a3 = 1;      /* signal an error */
+		tf->tf_a3 = 1; /* signal an error */
 	}
-	else {
+	else
+	{
 		/* Success. */
 		tf->tf_v0 = retval;
-		tf->tf_a3 = 0;      /* signal no error */
+		tf->tf_a3 = 0; /* signal no error */
 	}
 
 	/*
@@ -206,19 +207,18 @@ syscall(struct trapframe *tf)
  *
  * Thus, you can trash it and do things another way if you prefer.
  */
-void
-enter_forked_process(struct trapframe *tf)
+void enter_forked_process(struct trapframe *tf)
 {
 #if OPT_PROC_MANAGE
-  struct trapframe child_tf;
-  
-  child_tf = *tf;  
-  child_tf.tf_epc += 4;
-  child_tf.tf_v0 = 0;
-  child_tf.tf_a3 = 0;
-  as_activate();
-  mips_usermode(&child_tf);
+	struct trapframe child_tf;
+
+	child_tf = *tf;
+	child_tf.tf_epc += 4;
+	child_tf.tf_v0 = 0;
+	child_tf.tf_a3 = 0;
+	as_activate();
+	mips_usermode(&child_tf);
 #else
-    (void)tf;
+	(void)tf;
 #endif
 }
