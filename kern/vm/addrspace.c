@@ -27,14 +27,16 @@
  * SUCH DAMAGE.
  */
 
-#include <types.h>
+#include <addrspace.h>
 #include <kern/errno.h>
 #include <lib.h>
-#include <addrspace.h>
-#include <vm.h>
 #include <proc.h>
 #include <pt.h>
-
+#include <types.h>
+#include <vm.h>
+#include <vm_tlb.h>
+#include <opt-ondemand_manage.h>
+#include <opt-tlb_manage.h>
 static void
 vm_can_sleep(void)
 {
@@ -133,7 +135,8 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 
 	npages = sz / PAGE_SIZE;
 
-	if(pt_insert(vaddr, npages, readable, writeable, executable)){
+	if (pt_insert(vaddr, npages, readable, writeable, executable))
+	{
 		return ENOSYS;
 	}
 
@@ -143,9 +146,12 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 		as->as_npages1 = npages;
 		as->as_filesize1 = filesize;
 		as->as_offset1 = offset;
-		if(readable)	as->as_flags |= 1 << 2;
-		if(writeable)	as->as_flags |= 1 << 1;
-		if(executable)	as->as_flags |= 1;
+		if (readable)
+			as->as_flags |= 1 << 2;
+		if (writeable)
+			as->as_flags |= 1 << 1;
+		if (executable)
+			as->as_flags |= 1;
 		return 0;
 	}
 
@@ -155,9 +161,12 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 		as->as_npages2 = npages;
 		as->as_filesize2 = filesize;
 		as->as_offset2 = offset;
-		if(readable)	as->as_flags |= 1 << 5;
-		if(writeable)	as->as_flags |= 1 << 4;
-		if(executable)	as->as_flags |= 1 << 3;
+		if (readable)
+			as->as_flags |= 1 << 5;
+		if (writeable)
+			as->as_flags |= 1 << 4;
+		if (executable)
+			as->as_flags |= 1 << 3;
 		return 0;
 	}
 
@@ -297,7 +306,7 @@ int as_copy(struct addrspace *old, struct addrspace **ret)
 	new->as_flags = old->as_flags;
 
 	pt_insert(new->as_vbase1, new->as_npages1, (new->as_flags & 4), (new->as_flags & 2), (new->as_flags & 1));
-	pt_insert(new->as_vbase2, new->as_npages2, new->as_flags & 0x20, new->as_flags & 0x10, new->as_flags & 8 );
+	pt_insert(new->as_vbase2, new->as_npages2, new->as_flags & 0x20, new->as_flags & 0x10, new->as_flags & 8);
 	pt_insert(USERSTACK - STACKPAGES * PAGE_SIZE, STACKPAGES, 1, 1, 0);
 #endif
 
@@ -329,3 +338,113 @@ int as_copy(struct addrspace *old, struct addrspace **ret)
 	*ret = new;
 	return 0;
 }
+
+#if OPT_TLB_MANAGE
+int vm_fault(int faulttype, vaddr_t faultaddress)
+{
+	vaddr_t vbase1, vtop1, vbase2, vtop2, stackbase, stacktop;
+	paddr_t paddr;
+	int i;
+	uint32_t ehi, elo;
+	struct addrspace *as;
+	int spl;
+
+	faultaddress &= PAGE_FRAME;
+
+	DEBUG(DB_VM, "tlb_manage: fault: 0x%x\n", faultaddress);
+
+	switch (faulttype)
+	{
+	case VM_FAULT_READONLY:
+	#if OPT_TLB_MANAGE
+		return EFAULT;
+	#else
+		/* We always create pages read-write, so we can't get this */
+		panic("dumbvm: got VM_FAULT_READONLY\n");
+	#endif
+	case VM_FAULT_READ:
+	case VM_FAULT_WRITE:
+		break;
+	default:
+		return EINVAL;
+	}
+
+	if (curproc == NULL)
+	{
+		/*
+		 * No process. This is probably a kernel fault early
+		 * in boot. Return EFAULT so as to panic instead of
+		 * getting into an infinite faulting loop.
+		 */
+		return EFAULT;
+	}
+
+	as = proc_getas();
+	if (as == NULL)
+	{
+		/*
+		 * No address space set up. This is probably also a
+		 * kernel fault early in boot.
+		 */
+		return EFAULT;
+	}
+
+	/* Assert that the address space has been set up properly. */
+	KASSERT(as->as_vbase1 != 0);
+	KASSERT(as->as_npages1 != 0);
+	KASSERT(as->as_vbase2 != 0);
+	KASSERT(as->as_npages2 != 0);
+	KASSERT((as->as_vbase1 & PAGE_FRAME) == as->as_vbase1);
+	KASSERT((as->as_vbase2 & PAGE_FRAME) == as->as_vbase2);
+
+	vbase1 = as->as_vbase1;
+	vtop1 = vbase1 + as->as_npages1 * PAGE_SIZE;
+	vbase2 = as->as_vbase2;
+	vtop2 = vbase2 + as->as_npages2 * PAGE_SIZE;
+	stackbase = USERSTACK - STACKPAGES * PAGE_SIZE;
+	stacktop = USERSTACK;
+
+	paddr = pt_get_page(faultaddress);
+	if (paddr == ERR_CODE)
+	{
+		return EFAULT;
+	}
+
+	/* make sure it's page-aligned */
+	KASSERT((paddr & PAGE_FRAME) == paddr);
+
+	/* Disable interrupts on this CPU while frobbing the TLB. */
+	spl = splhigh();
+
+#if OPT_TLB_MANAGE
+	i = tlb_get_rr_victim();
+	ehi = faultaddress;
+	//TODO: update flag bits
+	elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
+	DEBUG(DB_VM, "tlb_manage: 0x%x -> 0x%x\n", faultaddress, paddr);
+	tlb_write(ehi, elo, i);
+	splx(spl);
+	return 0;
+#else
+	for (i = 0; i < NUM_TLB; i++)
+	{
+		tlb_read(&ehi, &elo, i);
+		if (elo & TLBLO_VALID)
+		{
+			continue;
+		}
+		ehi = faultaddress;
+		elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
+		DEBUG(DB_VM, "dumbvm: 0x%x -> 0x%x\n", faultaddress, paddr);
+		tlb_write(ehi, elo, i);
+		splx(spl);
+		return 0;
+	}
+
+	kprintf("dumbvm: Ran out of TLB entries - cannot handle page fault\n");
+	splx(spl);
+	return EFAULT;
+#endif
+}
+
+#endif
