@@ -129,6 +129,8 @@ int               as_define_region(struct addrspace *as,
                                    int executable,
                                    off_t offset,
                                    size_t filesize);
+
+int load_page(vaddr_t vaddr, int is_executable);
 #else
 int               as_define_region(struct addrspace *as,
                                    vaddr_t vaddr, size_t sz,

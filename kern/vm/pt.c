@@ -33,22 +33,22 @@ static int pt_hash(vaddr_t v_addr){
 }
 
 /* select the victim page among the one in RAM */
-static int pt_get_victim(void){
+static struct pt* pt_get_victim(void){
     return 0;
 }
 
 /* returns the entry corresponding to the page associated to the address v_addr (if that page is not in memory it will be loaded)*/
-int pt_get_page(vaddr_t v_addr){
-    v_addr &= PAGE_FRAME;/*
+paddr_t pt_get_page(vaddr_t v_addr){
+    v_addr &= PAGE_FRAME;
     // ricerca nella PT
     int found = 0;
     struct pt* ptr = pagetable + pt_hash(v_addr);
     while(ptr!=NULL && ptr->entry != NULL){
-        if(PT_PID(ptr->entry) == curproc->pid 
+        if(PT_PID(ptr->entry) == (unsigned int) curproc->pid 
             && PT_V_ADDR(ptr->entry) == v_addr){
                 found = 1;
                 if(PT_RAM(ptr->entry))
-                    return TLB_insert(ptr->entry);  // inserisco nella TLB
+                    return (paddr_t) ptr->entry->lo;  // inserisco nella TLB
                 else
                     break;
             }
@@ -59,40 +59,43 @@ int pt_get_page(vaddr_t v_addr){
         return ERR_CODE;
     }
 
-    paddr_t ram_page_number = getFreePages(1);  // ritorna 0 se no frame libere
+    paddr_t ram_page_number = 0;//getFreePages(1);  // ritorna 0 se no frame libere
     if(!ram_page_number){
-        int victim = pt_get_victim();   // page replacement 
-        int result = swap_out(PT_P_ADDR((&pagetable[victim])->entry));   
+        struct pt* victim = pt_get_victim();   // page replacement 
+        int result = 0;//swap_out(PT_P_ADDR((victim->entry));   
         if(!result){
             // impossibile fare swap (frose serve kill al processo corrente)
+            sys__exit(ENOMEM);
             return ERR_CODE;
         }
         // aggiornamento PT
-
-        ram_page_number = PT_P_ADDR(pagetable[victim].entry);
+        victim->entry->lo &= 0xFFE;
+        victim->entry->lo |= 2;
+        ram_page_number = PT_P_ADDR(victim->entry);
     }
     // aggiornamento entry nell PT e inserimento nella TLB
     ptr->entry->lo &= 0xFFF; // clear dei bit
     ptr->entry->lo |= ram_page_number;  // insert del physycal addr
-    TLB_insert(ptr->entry);     // la TLB deve essere settata prima di fare le operazioni di lettura
-
+    //TLB_insert(ptr->entry);     // la TLB deve essere settata prima di fare le operazioni di lettura
+    /*
     if(PT_SWAP(ptr->entry)){
-        if(!swap_in(v_addr)){
+        /f(!swap_in(v_addr)){
             // stop processo corrente
             return ERR_CODE;
         }
 
-        // aggiornamento PT (set RAM bit, clear SWAP bit)
     }else{
         // load della pagina da disco
-        if(!load_page(v_addr)){
+        if(!load_page(v_addr, PT_EXEC(ptr->entry))){
             // stop processo corrente 
             return ERR_CODE;
         }
-        // aggiornamento PT (set RAM bit)
-    }
-*/
-    return 0;
+    }*/
+
+    ptr->entry->lo |= 1;    // in RAM
+    ptr->entry->lo &= ~2;   // not swapped
+
+    return (paddr_t) ptr->entry->lo;
 }
 
 /* insert n_pages pages into the page table without allocating them in RAM */

@@ -5,7 +5,7 @@
 
 
 // Errors
-#define ERR_CODE 1
+#define ERR_CODE ((paddr_t) -1)
 
 #include "opt-ondemand_manage.h"
 
@@ -20,6 +20,7 @@
 #include <mips/tlb.h>
 #include <addrspace.h>
 #include <vm.h>
+#include <proc_syscalls.h>
 
 /* macros for accessing the PT entry fields */
 #define PT_V_ADDR(entry) (entry->hi & PAGE_FRAME)
@@ -46,7 +47,7 @@ struct pt{
 void pt_bootstrap(void);
 
 /* returns the entry corresponding to the page associated to the address v_addr (if that page is not in memory it will be loaded)*/
-int pt_get_page(vaddr_t v_addr);
+paddr_t pt_get_page(vaddr_t v_addr);
 
 /* insert n_pages pages into the page table without allocating them in RAM */
 int pt_insert(vaddr_t v_addr, unsigned int n_pages, int read, int write, int exec);

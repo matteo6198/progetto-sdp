@@ -61,6 +61,9 @@
 #include <elf.h>
 
 #include "opt-ondemand_manage.h"
+#if OPT_ONDEMAND_MANAGE
+#include <pt.h>
+#endif
 #if !OPT_ONDEMAND_MANAGE
 /*
  * Load a segment at virtual address VADDR. The segment in memory
@@ -316,3 +319,53 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 
 	return 0;
 }
+
+#if OPT_ONDEMAND_MANAGE
+
+int load_page(vaddr_t vaddr, int is_executable){
+	struct addrspace *as = proc_getas();
+	struct vnode* elf = curproc->p_elf;
+	struct iovec iov;
+	struct uio u;
+	int result;
+	off_t offset;
+	size_t filesize;
+
+	// find segment
+	if(vaddr >= as->as_vbase1 && vaddr < as->as_vbase1 + as->as_npages1 * PAGE_SIZE){
+		offset = as->as_offset1 + vaddr - as->as_vbase1;
+		filesize = (vaddr + PAGE_SIZE - as->as_vbase1 > as->as_filesize1)? as->as_filesize1 - (vaddr - as->as_vbase1) : PAGE_SIZE;
+	}
+	else if(vaddr >= as->as_vbase2 && vaddr < as->as_vbase2 + as->as_npages2 * PAGE_SIZE){
+		offset = as->as_offset2 + vaddr - as->as_vbase2;
+		filesize = as->as_filesize2;
+		filesize = (vaddr + PAGE_SIZE - as->as_vbase2 > as->as_filesize2)? as->as_filesize2 - (vaddr - as->as_vbase2) : PAGE_SIZE;
+	}
+	else{
+		return 0;
+	}
+
+	iov.iov_ubase = (userptr_t)vaddr;
+	iov.iov_len = PAGE_SIZE;		 // length of the memory space
+	u.uio_iov = &iov;
+	u.uio_iovcnt = 1;
+	u.uio_resid = filesize;          // amount to read from the file
+	u.uio_offset = offset;
+	u.uio_segflg = is_executable ? UIO_USERISPACE : UIO_USERSPACE;
+	u.uio_rw = UIO_READ;
+	u.uio_space = as;
+
+	result = VOP_READ(elf, &u);
+	if (result) {
+		return result;
+	}
+
+	if (u.uio_resid != 0) {
+		/* short read; problem with executable? */
+		kprintf("ELF: short read on segment - file truncated?\n");
+		return ENOEXEC;
+	}
+
+	return 0;
+}
+#endif

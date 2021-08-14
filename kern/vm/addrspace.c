@@ -27,12 +27,12 @@
  * SUCH DAMAGE.
  */
 
-#include <addrspace.h>
 #include <kern/errno.h>
+#include <types.h>
 #include <lib.h>
 #include <proc.h>
 #include <pt.h>
-#include <types.h>
+#include <addrspace.h>
 #include <vm.h>
 #include <vm_tlb.h>
 #include <opt-ondemand_manage.h>
@@ -219,12 +219,13 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 	return ENOSYS;
 }
 #endif
-
+# if !OPT_ONDEMAND_MANAGE
 static void
 as_zero_region(paddr_t paddr, unsigned npages)
 {
 	bzero((void *)PADDR_TO_KVADDR(paddr), npages * PAGE_SIZE);
 }
+#endif
 
 #if !OPT_ONDEMAND_MANAGE
 int as_prepare_load(struct addrspace *as)
