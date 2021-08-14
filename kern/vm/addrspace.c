@@ -343,7 +343,6 @@ int as_copy(struct addrspace *old, struct addrspace **ret)
 #if OPT_TLB_MANAGE
 int vm_fault(int faulttype, vaddr_t faultaddress)
 {
-	vaddr_t vbase1, vtop1, vbase2, vtop2, stackbase, stacktop;
 	paddr_t paddr;
 	int i;
 	uint32_t ehi, elo;
@@ -398,14 +397,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
 	KASSERT((as->as_vbase1 & PAGE_FRAME) == as->as_vbase1);
 	KASSERT((as->as_vbase2 & PAGE_FRAME) == as->as_vbase2);
 
-	vbase1 = as->as_vbase1;
-	vtop1 = vbase1 + as->as_npages1 * PAGE_SIZE;
-	vbase2 = as->as_vbase2;
-	vtop2 = vbase2 + as->as_npages2 * PAGE_SIZE;
-	stackbase = USERSTACK - STACKPAGES * PAGE_SIZE;
-	stacktop = USERSTACK;
-
-	paddr = pt_get_page(faultaddress);
+	paddr = pt_get_page(faultaddress, NULL);
 	if (paddr == ERR_CODE)
 	{
 		return EFAULT;
@@ -417,7 +409,6 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
 	/* Disable interrupts on this CPU while frobbing the TLB. */
 	spl = splhigh();
 
-#if OPT_TLB_MANAGE
 	i = tlb_get_rr_victim();
 	ehi = faultaddress;
 	//TODO: update flag bits
@@ -426,26 +417,6 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
 	tlb_write(ehi, elo, i);
 	splx(spl);
 	return 0;
-#else
-	for (i = 0; i < NUM_TLB; i++)
-	{
-		tlb_read(&ehi, &elo, i);
-		if (elo & TLBLO_VALID)
-		{
-			continue;
-		}
-		ehi = faultaddress;
-		elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
-		DEBUG(DB_VM, "dumbvm: 0x%x -> 0x%x\n", faultaddress, paddr);
-		tlb_write(ehi, elo, i);
-		splx(spl);
-		return 0;
-	}
-
-	kprintf("dumbvm: Ran out of TLB entries - cannot handle page fault\n");
-	splx(spl);
-	return EFAULT;
-#endif
 }
 
 #endif

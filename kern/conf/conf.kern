@@ -414,7 +414,8 @@ defoption vm_manage
 # SDP project
 defoption paging              # General
 defoption tlb_manage          # Ruggero
-optfile tlb_manage vm/vm_tlb.c
+
+optfile tlb_manage arch/mips/vm/vm_tlb.c
 
 defoption ondemand_manage    # Matteo
 optfile ondemand_manage vm/pt.c
