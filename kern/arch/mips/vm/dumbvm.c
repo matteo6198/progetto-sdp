@@ -110,8 +110,8 @@ static int isPageFree(unsigned long i)
 
 void memstats(void)
 {
-	unsigned long free_pages, i, free_mem, used_mem;
 #if OPT_VM_MANAGE
+	unsigned long free_pages, i, free_mem, used_mem;
 	spinlock_acquire(&memSpinLock);
 	if (!active)
 	{
