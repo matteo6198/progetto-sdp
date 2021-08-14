@@ -38,7 +38,7 @@ static int pt_get_victim(void){
 }
 
 /* returns the entry corresponding to the page associated to the address v_addr (if that page is not in memory it will be loaded)*/
-int pt_get_page(vaddr_t v_addr){
+paddr_t pt_get_page(vaddr_t v_addr, uint8_t *flags){
     v_addr &= PAGE_FRAME;/*
     // ricerca nella PT
     int found = 0;
