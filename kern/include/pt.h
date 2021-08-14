@@ -47,7 +47,7 @@ struct pt{
 void pt_bootstrap(void);
 
 /* returns the entry corresponding to the page associated to the address v_addr (if that page is not in memory it will be loaded)*/
-paddr_t pt_get_page(vaddr_t v_addr);
+paddr_t pt_get_page(vaddr_t v_addr, uint8_t *flags);
 
 /* insert n_pages pages into the page table without allocating them in RAM */
 int pt_insert(vaddr_t v_addr, unsigned int n_pages, int read, int write, int exec);
