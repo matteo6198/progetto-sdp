@@ -352,7 +352,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
 
 	faultaddress &= PAGE_FRAME;
 
-	DEBUG(DB_VM, "tlb_manage: fault: 0x%x\n", faultaddress);
+	//DEBUG(DB_VM, "tlb_manage: fault: 0x%x\n", faultaddress);
 
 	switch (faulttype)
 	{
