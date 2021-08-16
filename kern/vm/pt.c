@@ -32,14 +32,14 @@ static int pt_hash(vaddr_t v_addr){
     return res & hash_mask;
 }
 
-/* select the victim page among the one in RAM 
-   flags = RWX <-> 0x7
-*/
+/* select the victim page among the one in RAM */
 static struct pt* pt_get_victim(void){
     return 0;
 }
 
-/* returns the entry corresponding to the page associated to the address v_addr (if that page is not in memory it will be loaded)*/
+/* returns the entry corresponding to the page associated to the address v_addr (if that page is not in memory it will be loaded)
+   flags = XWR <-> 0x7
+*/
 paddr_t pt_get_page(vaddr_t v_addr, uint8_t* flags){
     v_addr &= PAGE_FRAME;
     // ricerca nella PT
