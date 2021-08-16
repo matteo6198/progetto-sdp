@@ -343,12 +343,8 @@ int as_copy(struct addrspace *old, struct addrspace **ret)
 #if OPT_TLB_MANAGE
 int vm_fault(int faulttype, vaddr_t faultaddress)
 {
-	paddr_t paddr;
-	int i;
-	uint32_t ehi, elo;
+	int status;
 	struct addrspace *as;
-	int spl;
-	uint8_t flags;
 
 	faultaddress &= PAGE_FRAME;
 
@@ -393,26 +389,11 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
 	KASSERT((as->as_vbase1 & PAGE_FRAME) == as->as_vbase1);
 	KASSERT((as->as_vbase2 & PAGE_FRAME) == as->as_vbase2);
 
-	paddr = pt_get_page(faultaddress, &flags);
-	if (paddr == ERR_CODE)
+	status = pt_get_page(faultaddress);
+	if (status != 0)
 	{
 		return EFAULT;
 	}
-
-	/* make sure it's page-aligned */
-	KASSERT((paddr & PAGE_FRAME) == paddr);
-
-	/* Disable interrupts on this CPU while frobbing the TLB. */
-	spl = splhigh();
-
-	i = tlb_get_rr_victim();
-	ehi = faultaddress;
-	elo = paddr | TLBLO_VALID;
-	if((flags & 0x2)) // write allowed
-		elo |= TLBLO_DIRTY;
-	DEBUG(DB_VM, "tlb_manage: 0x%x -> 0x%x\n", faultaddress, paddr);
-	tlb_write(ehi, elo, i);
-	splx(spl);
 	return 0;
 }
 

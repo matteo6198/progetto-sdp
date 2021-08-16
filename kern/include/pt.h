@@ -22,6 +22,7 @@
 #include <vm.h>
 #include <coremap.h>
 #include <proc_syscalls.h>
+#include <vm_tlb.h>
 
 /* macros for accessing the PT entry fields */
 #define PT_V_ADDR(entry) (entry->hi & PAGE_FRAME)
@@ -48,7 +49,7 @@ struct pt{
 void pt_bootstrap(void);
 
 /* returns the entry corresponding to the page associated to the address v_addr (if that page is not in memory it will be loaded)*/
-paddr_t pt_get_page(vaddr_t v_addr, uint8_t *flags);
+int pt_get_page(vaddr_t v_addr);
 
 /* insert n_pages pages into the page table without allocating them in RAM */
 int pt_insert(vaddr_t v_addr, unsigned int n_pages, int read, int write, int exec);

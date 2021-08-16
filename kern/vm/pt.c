@@ -38,9 +38,8 @@ static struct pt* pt_get_victim(void){
 }
 
 /* returns the entry corresponding to the page associated to the address v_addr (if that page is not in memory it will be loaded)
-   flags = XWR <-> 0x7
 */
-paddr_t pt_get_page(vaddr_t v_addr, uint8_t* flags){
+int pt_get_page(vaddr_t v_addr){
     v_addr &= PAGE_FRAME;
     // ricerca nella PT
     int found = 0;
@@ -49,10 +48,12 @@ paddr_t pt_get_page(vaddr_t v_addr, uint8_t* flags){
         if(ptr->entry !=NULL && PT_PID(ptr->entry) == (unsigned int) curproc->pid 
             && PT_V_ADDR(ptr->entry) == v_addr){
                 found = 1;
-                if(PT_RAM(ptr->entry))
-                    return (paddr_t) PT_P_ADDR(ptr->entry);  // inserisco nella TLB
-                else
+                if(PT_RAM(ptr->entry)){
+                    tlb_insert(v_addr, PT_P_ADDR(ptr->entry), PT_WRITE(ptr->entry));
+                    return 0;
+                }else{
                     break;
+                }
             }
         ptr = ptr->next;
     }
@@ -68,7 +69,7 @@ paddr_t pt_get_page(vaddr_t v_addr, uint8_t* flags){
         if(!result){
             // impossibile fare swap -> kill al processo corrente
             // Ruggero: forse conviene ritornare solo un errore e lasciarlo gestire al chiamante
-            sys__exit(ENOMEM);
+            //sys__exit(ENOMEM);
             return ERR_CODE;
         }
         // aggiornamento PT
@@ -79,7 +80,7 @@ paddr_t pt_get_page(vaddr_t v_addr, uint8_t* flags){
     // aggiornamento entry nell PT e inserimento nella TLB
     ptr->entry->lo &= ~PAGE_FRAME; // clear dei bit
     ptr->entry->lo |= ram_page_number;  // insert del physycal addr
-    //TLB_insert(ptr->entry);     // la TLB deve essere settata prima di fare le operazioni di lettura
+    tlb_insert(v_addr, PT_P_ADDR(ptr->entry), PT_WRITE(ptr->entry));     // la TLB deve essere settata prima di fare le operazioni di lettura
     
     if(PT_SWAP(ptr->entry)){
         //f(!swap_in(v_addr)){
@@ -98,9 +99,7 @@ paddr_t pt_get_page(vaddr_t v_addr, uint8_t* flags){
     ptr->entry->lo |= 1;    // in RAM
     ptr->entry->lo &= ~2;   // not swapped
 
-    if(flags != NULL)
-        *flags = (ptr->entry->lo & (0x7 << 3)) >> 3;    // 00000XWR
-    return (paddr_t) PT_P_ADDR(ptr->entry);
+    return 0;
 }
 
 /* insert n_pages pages into the page table without allocating them in RAM */
