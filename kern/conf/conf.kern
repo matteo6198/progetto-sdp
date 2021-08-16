@@ -419,6 +419,7 @@ optfile tlb_manage arch/mips/vm/vm_tlb.c
 
 defoption ondemand_manage    # Matteo
 optfile ondemand_manage vm/pt.c
+optfile ondemand_manage vm/coremap.c
 
 defoption swap_manage         # Samuele
 

@@ -28,7 +28,7 @@ void pt_bootstrap(void){
 /* returns the index of the page at address v_addr in the pagetable using an hash function */
 static int pt_hash(vaddr_t v_addr){
     pid_t pid = curproc->pid;
-    int res = (int) (pid * v_addr);
+    int res = (int) (pid * (v_addr >> 12));
     return res & hash_mask;
 }
 
@@ -43,12 +43,12 @@ paddr_t pt_get_page(vaddr_t v_addr, uint8_t* flags){
     // ricerca nella PT
     int found = 0;
     struct pt* ptr = pagetable + pt_hash(v_addr);
-    while(ptr!=NULL && ptr->entry != NULL){
-        if(PT_PID(ptr->entry) == (unsigned int) curproc->pid 
+    while(ptr!=NULL){
+        if(ptr->entry !=NULL && PT_PID(ptr->entry) == (unsigned int) curproc->pid 
             && PT_V_ADDR(ptr->entry) == v_addr){
                 found = 1;
                 if(PT_RAM(ptr->entry))
-                    return (paddr_t) ptr->entry->lo;  // inserisco nella TLB
+                    return (paddr_t) PT_P_ADDR(ptr->entry);  // inserisco nella TLB
                 else
                     break;
             }
@@ -59,12 +59,12 @@ paddr_t pt_get_page(vaddr_t v_addr, uint8_t* flags){
         return ERR_CODE;
     }
 
-    paddr_t ram_page_number = 0;//getFreePages(1);  // ritorna 0 se no frame libere
+    paddr_t ram_page_number = getFreePages(1);  // ritorna 0 se no frame libere
     if(!ram_page_number){
         struct pt* victim = pt_get_victim();   // page replacement 
         int result = 0;//swap_out(PT_P_ADDR((victim->entry));   
         if(!result){
-            // impossibile fare swap (frose serve kill al processo corrente)
+            // impossibile fare swap -> kill al processo corrente
             sys__exit(ENOMEM);
             return ERR_CODE;
         }
@@ -74,7 +74,7 @@ paddr_t pt_get_page(vaddr_t v_addr, uint8_t* flags){
         ram_page_number = PT_P_ADDR(victim->entry);
     }
     // aggiornamento entry nell PT e inserimento nella TLB
-    ptr->entry->lo &= 0xFFF; // clear dei bit
+    ptr->entry->lo &= ~PAGE_FRAME; // clear dei bit
     ptr->entry->lo |= ram_page_number;  // insert del physycal addr
     //TLB_insert(ptr->entry);     // la TLB deve essere settata prima di fare le operazioni di lettura
     /*
@@ -97,7 +97,7 @@ paddr_t pt_get_page(vaddr_t v_addr, uint8_t* flags){
 
     if(flags != NULL)
         *flags = (ptr->entry->lo & (0x7 << 3)) >> 3;    // 00000XWR
-    return (paddr_t) ptr->entry->lo;
+    return (paddr_t) PT_P_ADDR(ptr->entry);
 }
 
 /* insert n_pages pages into the page table without allocating them in RAM */
@@ -106,7 +106,7 @@ int pt_insert(vaddr_t v_addr, unsigned int n_pages, int read, int write, int exe
     struct pt* ptr, *tmp;
     struct pt_entry* entry;
     int flags = 0;
-    KASSERT((v_addr && ~PAGE_FRAME) == 0);
+    KASSERT((v_addr & ~PAGE_FRAME) == 0);
 
     if(read)
         flags |= 1<<3;
@@ -122,7 +122,7 @@ int pt_insert(vaddr_t v_addr, unsigned int n_pages, int read, int write, int exe
         }
         /* set entry fields */
         entry->hi = (int) v_addr;
-        entry->hi &= curproc->pid & 0xFFF;
+        entry->hi |= curproc->pid & ~PAGE_FRAME;
         entry->lo = 0;
         entry->lo |= flags;
 
@@ -141,8 +141,7 @@ int pt_insert(vaddr_t v_addr, unsigned int n_pages, int read, int write, int exe
 }
 
 /* delete all pages of this process from page table */
-void pt_delete_PID(void){
-    struct addrspace* as = proc_getas();
+void pt_delete_PID(struct addrspace *as){
     unsigned int i;
     struct pt* tmp, *prev;
     vaddr_t addr;

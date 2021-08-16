@@ -81,7 +81,7 @@ void as_destroy(struct addrspace *as)
 {
 	vm_can_sleep();
 #if OPT_ONDEMAND_MANAGE
-	pt_delete_PID();
+	pt_delete_PID(as);
 #else
 	free_kpages(PADDR_TO_KVADDR(as->as_pbase1));
 	free_kpages(PADDR_TO_KVADDR(as->as_pbase2));
