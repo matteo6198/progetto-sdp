@@ -99,7 +99,7 @@ paddr_t pt_get_page(vaddr_t v_addr, uint8_t* flags){
     ptr->entry->lo &= ~2;   // not swapped
 
     if(flags != NULL)
-        *flags = (ptr->entry->lo & 0xE) >> 3;
+        *flags = (ptr->entry->lo & (0x7 << 3)) >> 3;    // 00000XWR
     return (paddr_t) ptr->entry->lo;
 }
 
