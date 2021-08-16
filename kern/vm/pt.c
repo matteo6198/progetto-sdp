@@ -32,7 +32,9 @@ static int pt_hash(vaddr_t v_addr){
     return res & hash_mask;
 }
 
-/* select the victim page among the one in RAM */
+/* select the victim page among the one in RAM 
+   flags = RWX <-> 0x7
+*/
 static struct pt* pt_get_victim(void){
     return 0;
 }
@@ -65,6 +67,7 @@ paddr_t pt_get_page(vaddr_t v_addr, uint8_t* flags){
         int result = 0;//swap_out(PT_P_ADDR((victim->entry));   
         if(!result){
             // impossibile fare swap (frose serve kill al processo corrente)
+            // Ruggero: forse conviene ritornare solo un errore e lasciarlo gestire al chiamante
             sys__exit(ENOMEM);
             return ERR_CODE;
         }
