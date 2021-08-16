@@ -348,6 +348,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
 	uint32_t ehi, elo;
 	struct addrspace *as;
 	int spl;
+	uint8_t flags;
 
 	faultaddress &= PAGE_FRAME;
 
@@ -356,12 +357,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
 	switch (faulttype)
 	{
 	case VM_FAULT_READONLY:
-	#if OPT_TLB_MANAGE
 		return EFAULT;
-	#else
-		/* We always create pages read-write, so we can't get this */
-		panic("dumbvm: got VM_FAULT_READONLY\n");
-	#endif
 	case VM_FAULT_READ:
 	case VM_FAULT_WRITE:
 		break;
@@ -397,7 +393,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
 	KASSERT((as->as_vbase1 & PAGE_FRAME) == as->as_vbase1);
 	KASSERT((as->as_vbase2 & PAGE_FRAME) == as->as_vbase2);
 
-	paddr = pt_get_page(faultaddress, NULL);
+	paddr = pt_get_page(faultaddress, &flags);
 	if (paddr == ERR_CODE)
 	{
 		return EFAULT;
@@ -411,8 +407,9 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
 
 	i = tlb_get_rr_victim();
 	ehi = faultaddress;
-	//TODO: update flag bits
-	elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
+	elo = paddr | TLBLO_VALID;
+	if((flags & 0x2)) // write allowed
+		elo |= TLBLO_DIRTY;
 	DEBUG(DB_VM, "tlb_manage: 0x%x -> 0x%x\n", faultaddress, paddr);
 	tlb_write(ehi, elo, i);
 	splx(spl);

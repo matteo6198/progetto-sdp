@@ -37,7 +37,9 @@ static struct pt* pt_get_victim(void){
     return 0;
 }
 
-/* returns the entry corresponding to the page associated to the address v_addr (if that page is not in memory it will be loaded)*/
+/* returns the entry corresponding to the page associated to the address v_addr (if that page is not in memory it will be loaded)
+   flags = XWR <-> 0x7
+*/
 paddr_t pt_get_page(vaddr_t v_addr, uint8_t* flags){
     v_addr &= PAGE_FRAME;
     // ricerca nella PT
@@ -65,6 +67,7 @@ paddr_t pt_get_page(vaddr_t v_addr, uint8_t* flags){
         int result = 0;//swap_out(PT_P_ADDR((victim->entry));   
         if(!result){
             // impossibile fare swap -> kill al processo corrente
+            // Ruggero: forse conviene ritornare solo un errore e lasciarlo gestire al chiamante
             sys__exit(ENOMEM);
             return ERR_CODE;
         }
