@@ -338,7 +338,6 @@ int load_page(vaddr_t vaddr, int is_executable){
 	}
 	else if(vaddr >= as->as_vbase2 && vaddr < as->as_vbase2 + as->as_npages2 * PAGE_SIZE){
 		offset = as->as_offset2 + vaddr - as->as_vbase2;
-		filesize = as->as_filesize2;
 		filesize = (vaddr + PAGE_SIZE - as->as_vbase2 > as->as_filesize2)? as->as_filesize2 - (vaddr - as->as_vbase2) : PAGE_SIZE;
 	}
 	else{

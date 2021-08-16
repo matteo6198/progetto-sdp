@@ -80,12 +80,12 @@ paddr_t pt_get_page(vaddr_t v_addr, uint8_t* flags){
     ptr->entry->lo &= ~PAGE_FRAME; // clear dei bit
     ptr->entry->lo |= ram_page_number;  // insert del physycal addr
     //TLB_insert(ptr->entry);     // la TLB deve essere settata prima di fare le operazioni di lettura
-    /*
+    
     if(PT_SWAP(ptr->entry)){
-        /f(!swap_in(v_addr)){
+        //f(!swap_in(v_addr)){
             // stop processo corrente
             return ERR_CODE;
-        }
+        //}
 
     }else{
         // load della pagina da disco
@@ -93,7 +93,7 @@ paddr_t pt_get_page(vaddr_t v_addr, uint8_t* flags){
             // stop processo corrente 
             return ERR_CODE;
         }
-    }*/
+    }
 
     ptr->entry->lo |= 1;    // in RAM
     ptr->entry->lo &= ~2;   // not swapped
