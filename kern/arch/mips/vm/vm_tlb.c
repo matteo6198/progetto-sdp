@@ -1,5 +1,6 @@
+#include <types.h>
 #include <vm_tlb.h>
-#include <tlb.h>
+#include <mips/tlb.h>
 
 int tlb_get_rr_victim(void)
 {
