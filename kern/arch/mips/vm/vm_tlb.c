@@ -22,7 +22,7 @@ void tlb_insert(vaddr_t vaddr, paddr_t paddr, int write){
 	KASSERT((paddr & PAGE_FRAME)==paddr);
 
     spl = splhigh();
-	
+
 	i = tlb_get_rr_victim();
 	ehi = vaddr;
 	elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
@@ -32,4 +32,13 @@ void tlb_insert(vaddr_t vaddr, paddr_t paddr, int write){
 	tlb_write(ehi, elo, i);
 	splx(spl);
 	return;
+}
+
+void tlb_invalidate(void){
+	int i;
+	for (i = 0; i < NUM_TLB; i++)
+	{
+		tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
+	}
+
 }
