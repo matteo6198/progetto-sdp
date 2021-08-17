@@ -151,7 +151,8 @@ void pt_delete_PID(struct addrspace *as){
     for(i=0, addr = as->as_vbase1;i<as->as_npages1;i++, addr+=PAGE_SIZE){
         prev = pagetable + pt_hash(addr);
         while(prev != NULL && prev->next != NULL &&
-                PT_V_ADDR(prev->next->entry) != addr)
+                (prev->next->entry == NULL ||
+                PT_V_ADDR(prev->next->entry) != addr))
             prev = prev->next;
         if(prev == NULL)
             continue;

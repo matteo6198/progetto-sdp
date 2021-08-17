@@ -17,11 +17,15 @@ int tlb_get_rr_victim(void)
 void tlb_insert(vaddr_t vaddr, paddr_t paddr, int write){
     int spl, i;
     uint32_t ehi, elo;
+
+	KASSERT((vaddr & PAGE_FRAME)==vaddr);
+	KASSERT((paddr & PAGE_FRAME)==paddr);
+	
     spl = splhigh();
 
 	i = tlb_get_rr_victim();
 	ehi = vaddr & PAGE_FRAME;
-	elo = (paddr & PAGE_FRAME) | TLBLO_VALID;
+	elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
 	if(write) // write allowed
 		elo |= TLBLO_DIRTY;
 	DEBUG(DB_VM, "tlb_manage: 0x%x -> 0x%x\n", vaddr, paddr);
