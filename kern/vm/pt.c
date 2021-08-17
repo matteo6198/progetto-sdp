@@ -80,6 +80,8 @@ int pt_get_page(vaddr_t v_addr){
     // aggiornamento entry nell PT e inserimento nella TLB
     ptr->entry->lo &= ~PAGE_FRAME; // clear dei bit
     ptr->entry->lo |= ram_page_number;  // insert del physycal addr
+    ptr->entry->lo |= 1;    // in RAM
+    ptr->entry->lo &= ~2;   // not swapped
     tlb_insert(v_addr, PT_P_ADDR(ptr->entry), PT_WRITE(ptr->entry));     // la TLB deve essere settata prima di fare le operazioni di lettura
     
     if(PT_SWAP(ptr->entry)){
@@ -96,8 +98,6 @@ int pt_get_page(vaddr_t v_addr){
         }
     }
 
-    ptr->entry->lo |= 1;    // in RAM
-    ptr->entry->lo &= ~2;   // not swapped
 
     return 0;
 }
