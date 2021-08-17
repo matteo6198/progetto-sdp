@@ -77,7 +77,12 @@
 #define __PID_MIN       2
 
 /* Max value for a process ID (change this to match your implementation) */
+#include <opt-paging.h>
+#if OPT_PAGING
+#define __PID_MAX       64
+#else
 #define __PID_MAX       32767
+#endif
 
 /* Max open files per process */
 #define __OPEN_MAX      128

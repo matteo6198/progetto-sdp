@@ -92,7 +92,7 @@ void as_destroy(struct addrspace *as)
 
 void as_activate(void)
 {
-	int i, spl;
+	//int i, spl;
 	struct addrspace *as;
 
 	as = proc_getas();
@@ -102,14 +102,14 @@ void as_activate(void)
 	}
 
 	/* Disable interrupts on this CPU while frobbing the TLB. */
-	spl = splhigh();
+	/*spl = splhigh();
 
 	for (i = 0; i < NUM_TLB; i++)
 	{
 		tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
 	}
 
-	splx(spl);
+	splx(spl);*/
 }
 
 void as_deactivate(void)
@@ -348,7 +348,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
 
 	faultaddress &= PAGE_FRAME;
 
-	//DEBUG(DB_VM, "tlb_manage: fault: 0x%x\n", faultaddress);
+	DEBUG(DB_VM, "tlb_manage[%d]: fault: 0x%x\n",faulttype, faultaddress);
 
 	switch (faulttype)
 	{

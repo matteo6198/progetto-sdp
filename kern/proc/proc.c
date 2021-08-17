@@ -48,8 +48,8 @@
 #include <current.h>
 #include <addrspace.h>
 #include <vnode.h>
+#include <limits.h>
 #include <opt-proc_manage.h>
-#define MAX_PROC 100
 /*
  * The process for the kernel; this holds all the kernel-only threads.
  */
@@ -57,29 +57,31 @@ struct proc *kproc;
 
 #if OPT_PROC_MANAGE
 static struct spinlock process_table_lock=SPINLOCK_INITIALIZER;
-struct proc* processes[MAX_PROC];
+struct proc* processes[PID_MAX];
 static int last_pid=-1;
 
 static int add_proc(struct proc* p){
   int start;
   int assigned = 0;
   spinlock_acquire(&process_table_lock);
-  start = (last_pid + 1) % MAX_PROC;
+  start = (last_pid + 1) % PID_MAX;
+
   while(start != last_pid){
     if(processes[start] == NULL){
       processes[start] = p;
+	  
       p->pid = (pid_t)start;
       assigned = 1;
       last_pid = start;
     }else
-      start = (start + 1) % MAX_PROC;
+      start = (start + 1) % PID_MAX;
   }
   spinlock_release(&process_table_lock);
   return assigned;
 }
 
 static void remove_proc(pid_t pid){
-  if(pid >= MAX_PROC || pid < 0)
+  if(pid >= PID_MAX || pid < 0)
     return;
   spinlock_acquire(&process_table_lock);
   processes[pid] = NULL;
@@ -88,7 +90,7 @@ static void remove_proc(pid_t pid){
 }
 
 struct proc* get_proc_by_pid(pid_t pid){
-  if(pid >= MAX_PROC || pid < 0)
+  if(pid >= PID_MAX || pid < 0)
     return NULL;
   return processes[pid];
 }
@@ -290,8 +292,12 @@ proc_bootstrap(void)
 {
 #if OPT_PROC_MANAGE
   int i;
-  for(i=0;i<MAX_PROC;i++)
-    processes[i]=NULL;
+  for(i=0;i<PID_MAX;i++){
+	  	if(i < PID_MIN)
+	  		processes[i] = (struct proc*)1;
+		else
+    		processes[i]=NULL;
+  }
 #endif
 	kproc = proc_create("[kernel]");
 	if (kproc == NULL) {
