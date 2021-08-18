@@ -39,10 +39,15 @@
 #include <mainbus.h>
 #include <vfs.h>          // for vfs_sync()
 #include <lamebus/ltrace.h> // for ltrace_stop()
+#include <opt-paging.h>
 
 
 /* Flags word for DEBUG() macro. */
+#if OPT_PAGING
 uint32_t dbflags = 0 | DB_VM;
+#else
+uint32_t dbflags = 0;
+#endif
 
 /* Lock for non-polled kprintfs */
 static struct lock *kprintf_lock;

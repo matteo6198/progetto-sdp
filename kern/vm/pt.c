@@ -2,7 +2,7 @@
 
 struct pt* pagetable;
 static int nRamFrames = 0;
-static int hash_mask = 0;
+//static int hash_mask = 0;
 struct spinlock pt_lock = SPINLOCK_INITIALIZER;
 
 /* bootstrap for the page table */
@@ -10,11 +10,11 @@ void pt_bootstrap(void){
     nRamFrames = (ram_getsize() / PAGE_SIZE);
     // build mask
     int cnt = 1;
-    hash_mask = 1;
+    /*hash_mask = 1;
     while(cnt < nRamFrames){
         cnt = cnt << 1;
         hash_mask = (hash_mask << 1) | 1;
-    }
+    }*/
     // allocating page table
     pagetable = kmalloc(nRamFrames * sizeof(struct pt));
     if(pagetable == NULL)
@@ -29,7 +29,7 @@ void pt_bootstrap(void){
 /* returns the index of the page at address v_addr in the pagetable using an hash function */
 static int pt_hash(vaddr_t v_addr){
     int res = (int) (v_addr >> 12);
-    return res & hash_mask;
+    return res % nRamFrames;
 }
 
 /* select the victim page among the one in RAM */
@@ -51,7 +51,7 @@ int pt_get_page(vaddr_t v_addr){
                 found = 1;
                 if(PT_RAM(ptr->entry)){
                     spinlock_release(&pt_lock);
-                    tlb_insert(v_addr, PT_P_ADDR(ptr->entry), PT_WRITE(ptr->entry));
+                    tlb_insert(v_addr, PT_P_ADDR(ptr->entry));
                     return 0;
                 }else{
                     break;
@@ -76,7 +76,7 @@ int pt_get_page(vaddr_t v_addr){
             return ERR_CODE;
         }
         // aggiornamento PT
-        victim->entry->lo &= 0xFFE;
+        victim->entry->lo &= 0xFFFFFFFE;
         victim->entry->lo |= 2;
         ram_page_number = PT_P_ADDR(victim->entry);
     }
@@ -85,8 +85,10 @@ int pt_get_page(vaddr_t v_addr){
     ptr->entry->lo |= ram_page_number;  // insert del physycal addr
     ptr->entry->lo |= 1;    // in RAM
     ptr->entry->lo &= ~2;   // not swapped
-    tlb_insert(v_addr, PT_P_ADDR(ptr->entry), PT_WRITE(ptr->entry));     // la TLB deve essere settata prima di fare le operazioni di lettura
+    tlb_insert(v_addr, PT_P_ADDR(ptr->entry));     // la TLB deve essere settata prima di fare le operazioni di lettura
     
+    bzero((void *)v_addr, PAGE_SIZE);
+
     if(PT_SWAP(ptr->entry)){
         //f(!swap_in(v_addr)){
             // stop processo corrente
@@ -101,6 +103,10 @@ int pt_get_page(vaddr_t v_addr){
         }
     }
 
+    if(!PT_WRITE(ptr->entry)){
+        uint32_t i = tlb_probe(PT_V_ADDR(ptr->entry), PT_P_ADDR(ptr->entry));
+        tlb_write(PT_V_ADDR(ptr->entry), PT_P_ADDR(ptr->entry) | TLBLO_VALID, i);
+    }
 
     return 0;
 }

@@ -14,7 +14,7 @@ int tlb_get_rr_victim(void)
     return victim;
 }
 
-void tlb_insert(vaddr_t vaddr, paddr_t paddr, int write){
+void tlb_insert(vaddr_t vaddr, paddr_t paddr){
     int spl, i;
     uint32_t ehi, elo;
 
@@ -26,8 +26,6 @@ void tlb_insert(vaddr_t vaddr, paddr_t paddr, int write){
 	i = tlb_get_rr_victim();
 	ehi = vaddr;
 	elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
-	if(write) // write allowed
-		elo |= TLBLO_DIRTY;
 	//DEBUG(DB_VM, "tlb_manage: 0x%x -> 0x%x\n", vaddr, paddr);
 	tlb_write(ehi, elo, i);
 	splx(spl);

@@ -37,6 +37,7 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <err.h>
 
@@ -99,11 +100,13 @@ void
 initarray(void)
 {
 	int i;
-
+	printf("before srandom\n");
 	/*
 	 * Initialize the array, with pseudo-random but deterministic contents.
 	 */
 	srandom(533);
+
+	printf("after srandom\n");
 
 	for (i = 0; i < SIZE; i++) {
 		A[i] = random();
@@ -128,8 +131,12 @@ check(void)
 int
 main(void)
 {
+	printf("start\n");
 	initarray();
+	printf("after initarray\n");
 	sort(A, SIZE);
+	printf("after sort\n");
 	check();
+	printf("after check \n");
 	return 0;
 }
