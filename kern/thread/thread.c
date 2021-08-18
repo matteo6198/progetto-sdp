@@ -52,9 +52,6 @@
 #include <vnode.h>
 #include <opt-proc_manage.h>
 
-#include <vm_tlb.h>
-#include <opt-paging.h>
-
 /* Magic number used as a guard value on kernel thread stacks. */
 #define THREAD_STACK_MAGIC 0xbaadf00d
 
@@ -566,9 +563,6 @@ thread_switch(threadstate_t newstate, struct wchan *wc, struct spinlock *lk)
 {
 	struct thread *cur, *next;
 	int spl;
-#if OPT_PAGING
-	struct thread* caller;
-#endif
 
 	DEBUGASSERT(curcpu->c_curthread == curthread);
 	DEBUGASSERT(curthread->t_cpu == curcpu->c_self);
@@ -577,10 +571,6 @@ thread_switch(threadstate_t newstate, struct wchan *wc, struct spinlock *lk)
 	spl = splhigh();
 
 	cur = curthread;
-
-#if OPT_PAGING
-	caller = curthread;
-#endif
 
 	/*
 	 * If we're idle, return without doing anything. This happens
@@ -728,11 +718,8 @@ thread_switch(threadstate_t newstate, struct wchan *wc, struct spinlock *lk)
 	spinlock_release(&curcpu->c_runqueue_lock);
 
 	/* Activate our address space in the MMU. */
-#if OPT_PAGING
-	if(caller->t_proc->p_addrspace != cur->t_proc->p_addrspace)
-		tlb_invalidate();
-#endif
 	as_activate();
+
 	/* Clean up dead threads. */
 	exorcise();
 

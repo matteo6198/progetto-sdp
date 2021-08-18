@@ -92,24 +92,27 @@ void as_destroy(struct addrspace *as)
 
 void as_activate(void)
 {
-	//int i, spl;
+	int i, spl;
 	struct addrspace *as;
+	static pid_t last;
 
 	as = proc_getas();
 	if (as == NULL)
 	{
 		return;
 	}
-
+	if(last == curproc->pid)
+		return;
+	last = curproc->pid;
 	/* Disable interrupts on this CPU while frobbing the TLB. */
-	/*spl = splhigh();
+	spl = splhigh();
 
 	for (i = 0; i < NUM_TLB; i++)
 	{
 		tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
 	}
 
-	splx(spl);*/
+	splx(spl);
 }
 
 void as_deactivate(void)

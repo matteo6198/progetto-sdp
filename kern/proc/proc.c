@@ -85,7 +85,6 @@ static void remove_proc(pid_t pid){
     return;
   spinlock_acquire(&process_table_lock);
   processes[pid] = NULL;
-  last_pid = pid - 1;
   spinlock_release(&process_table_lock);
 }
 
