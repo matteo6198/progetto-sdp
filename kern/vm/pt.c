@@ -3,6 +3,7 @@
 struct pt* pagetable;
 static int nRamFrames = 0;
 static int hash_mask = 0;
+struct spinlock pt_lock = SPINLOCK_INITIALIZER;
 
 /* bootstrap for the page table */
 void pt_bootstrap(void){
@@ -43,11 +44,13 @@ int pt_get_page(vaddr_t v_addr){
     // ricerca nella PT
     int found = 0;
     struct pt* ptr = pagetable + pt_hash(v_addr);
+    spinlock_acquire(&pt_lock);
     while(ptr!=NULL){
         if(ptr->entry !=NULL && PT_PID(ptr->entry) == (unsigned int) curproc->pid 
             && PT_V_ADDR(ptr->entry) == v_addr){
                 found = 1;
                 if(PT_RAM(ptr->entry)){
+                    spinlock_release(&pt_lock);
                     tlb_insert(v_addr, PT_P_ADDR(ptr->entry), PT_WRITE(ptr->entry));
                     return 0;
                 }else{
@@ -56,6 +59,7 @@ int pt_get_page(vaddr_t v_addr){
             }
         ptr = ptr->next;
     }
+    spinlock_release(&pt_lock);
     if(!found){
         // page not found
         return ERR_CODE;
@@ -128,15 +132,18 @@ int pt_insert(vaddr_t v_addr, unsigned int n_pages, int read, int write, int exe
         entry->lo |= flags;
 
         /* insert into PT */
+        spinlock_acquire(&pt_lock);
         ptr = pagetable + pt_hash(v_addr);
         tmp = kmalloc(sizeof(struct pt));
         if(tmp == NULL){
+            spinlock_release(&pt_lock);
             kfree(entry);
             return 1;
         }
         tmp->entry = entry;
         tmp->next = ptr->next;
-        ptr->next = tmp;        
+        ptr->next = tmp;    
+        spinlock_release(&pt_lock);    
     }
     return 0;
 }
@@ -146,31 +153,44 @@ void pt_delete_PID(struct addrspace *as){
     unsigned int i;
     struct pt* tmp, *prev;
     vaddr_t addr;
+
     /* clean first segment */
     for(i=0, addr = as->as_vbase1;i<as->as_npages1;i++, addr+=PAGE_SIZE){
         prev = pagetable + pt_hash(addr);
+        spinlock_acquire(&pt_lock);
         while(prev != NULL && prev->next != NULL &&
                 (prev->next->entry == NULL ||
                 PT_V_ADDR(prev->next->entry) != addr))
             prev = prev->next;
-        if(prev == NULL)
+        if(prev == NULL){
+            spinlock_release(&pt_lock);
             continue;
+        }
         tmp = prev->next;
         prev->next = tmp->next;
+        spinlock_release(&pt_lock);
+        if(PT_RAM(tmp->entry))
+            free_ppage(PT_P_ADDR(tmp->entry));
         kfree(tmp->entry);
         kfree(tmp);
     }
     /* clean second segment */
     for(i=0, addr = as->as_vbase2;i<as->as_npages2;i++, addr+=PAGE_SIZE){
         prev = pagetable + pt_hash(addr);
+        spinlock_acquire(&pt_lock);
         while(prev != NULL && prev->next != NULL &&
                 (prev->next->entry == NULL ||
                 PT_V_ADDR(prev->next->entry) != addr))
             prev = prev->next;
-        if(prev == NULL || prev->next == NULL)
+        if(prev == NULL || prev->next == NULL){
+            spinlock_release(&pt_lock);
             continue;
+        }
         tmp = prev->next;
         prev->next = tmp->next;
+        spinlock_release(&pt_lock);
+        if(PT_RAM(tmp->entry))
+            free_ppage(PT_P_ADDR(tmp->entry));
         kfree(tmp->entry);
         kfree(tmp);
     }
@@ -178,15 +198,22 @@ void pt_delete_PID(struct addrspace *as){
     addr = USERSTACK - STACKPAGES * PAGE_SIZE;
     for(i=0;i<STACKPAGES; i++, addr += PAGE_SIZE){
         prev = pagetable + pt_hash(addr);
+        spinlock_acquire(&pt_lock);
         while(prev != NULL && prev->next != NULL &&
                 (prev->next->entry == NULL ||
                 PT_V_ADDR(prev->next->entry) != addr))
             prev = prev->next;
-        if(prev == NULL)
+        if(prev == NULL){
+            spinlock_release(&pt_lock);
             continue;
+        }
         tmp = prev->next;
         prev->next = tmp->next;
+        spinlock_release(&pt_lock);
+        if(PT_RAM(tmp->entry))
+            free_ppage(PT_P_ADDR(tmp->entry));
         kfree(tmp->entry);
         kfree(tmp);
     }
+
 }

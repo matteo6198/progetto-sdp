@@ -283,3 +283,22 @@ void memstats(void)
 	kprintf("Virtual memory is not managed\n");
 #endif
 }
+
+void free_ppage(paddr_t paddr){
+	unsigned long page;
+	KASSERT((paddr & PAGE_FRAME) == paddr);
+
+	page = (unsigned long) paddr / PAGE_SIZE;
+	spinlock_acquire(&memSpinLock);
+
+	if (!active)
+	{
+		spinlock_release(&memSpinLock);
+		return;
+	}
+	allocated_size[page] = 0;
+	pageSetFree(page);
+
+	spinlock_release(&memSpinLock);
+
+}

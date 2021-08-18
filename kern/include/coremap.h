@@ -22,5 +22,5 @@
 #include <opt-vm_manage.h>
 
 paddr_t getFreePages(unsigned long n);
-
+void free_ppage(paddr_t paddr);
 #endif /* _COREMAP_H_ */
