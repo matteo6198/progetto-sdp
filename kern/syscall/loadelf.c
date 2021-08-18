@@ -330,11 +330,16 @@ int load_page(vaddr_t vaddr, int is_executable){
 	int result;
 	off_t offset;
 	size_t filesize;
+	vaddr_t read_start;
 
 	// find segment
-	if(vaddr >= as->as_vbase1 && vaddr < as->as_vbase1 + as->as_npages1 * PAGE_SIZE){
+	if(vaddr >= as->as_vbase1 && vaddr < (as->as_vbase1 + (as->as_npages1 * PAGE_SIZE))){
+		if(as->as_elfbase1 > vaddr)
+			read_start = as->as_elfbase1;
+		else 
+			read_start = vaddr;
 		offset = as->as_offset1 + vaddr - as->as_vbase1;
-		if(vaddr + PAGE_SIZE - as->as_vbase1 > as->as_filesize1){
+		if((vaddr + PAGE_SIZE - as->as_vbase1) > as->as_filesize1){
 			if(vaddr - as->as_vbase1 > as->as_filesize1)
 				filesize = 0;
 			else
@@ -344,9 +349,14 @@ int load_page(vaddr_t vaddr, int is_executable){
 		}
 		//filesize = (vaddr + PAGE_SIZE - as->as_vbase1 > as->as_filesize1)? as->as_filesize1 - (vaddr - as->as_vbase1) : PAGE_SIZE;
 	}
-	else if(vaddr >= as->as_vbase2 && vaddr < as->as_vbase2 + as->as_npages2 * PAGE_SIZE){
+	else if(vaddr >= as->as_vbase2 && vaddr < (as->as_vbase2 + (as->as_npages2 * PAGE_SIZE))){
+		
+		if(as->as_elfbase2 > vaddr)
+			read_start = as->as_elfbase2;
+		else 
+			read_start = vaddr;
 		offset = as->as_offset2 + vaddr - as->as_vbase2;
-		if(vaddr + PAGE_SIZE - as->as_vbase2 > as->as_filesize2){
+		if((vaddr + PAGE_SIZE - as->as_vbase2) > as->as_filesize2){
 			if(vaddr - as->as_vbase2 > as->as_filesize2)
 				filesize = 0;
 			else
@@ -360,7 +370,7 @@ int load_page(vaddr_t vaddr, int is_executable){
 		return 0;
 	}
 
-	iov.iov_ubase = (userptr_t)vaddr;
+	iov.iov_ubase = (userptr_t)read_start;
 	iov.iov_len = PAGE_SIZE;		 // length of the memory space
 	u.uio_iov = &iov;
 	u.uio_iovcnt = 1;

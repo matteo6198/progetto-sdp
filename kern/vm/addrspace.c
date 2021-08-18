@@ -126,26 +126,28 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 					 off_t offset, size_t filesize)
 {
 	size_t npages;
+	vaddr_t start_page = vaddr;
 
 	vm_can_sleep();
 
 	/* Align the region. First, the base... */
-	sz += vaddr & ~(vaddr_t)PAGE_FRAME;
-	vaddr &= PAGE_FRAME;
+	sz += start_page & ~(vaddr_t)PAGE_FRAME;
+	start_page &= PAGE_FRAME;
 
 	/* ...and now the length. */
 	sz = (sz + PAGE_SIZE - 1) & PAGE_FRAME;
 
 	npages = sz / PAGE_SIZE;
 
-	if (pt_insert(vaddr, npages, readable, writeable, executable))
+	if (pt_insert(start_page, npages, readable, writeable, executable))
 	{
 		return ENOSYS;
 	}
 
 	if (as->as_vbase1 == 0)
 	{
-		as->as_vbase1 = vaddr;
+		as->as_vbase1 = start_page;
+		as->as_elfbase1 = vaddr;
 		as->as_npages1 = npages;
 		as->as_filesize1 = filesize;
 		as->as_offset1 = offset;
@@ -160,7 +162,8 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 
 	if (as->as_vbase2 == 0)
 	{
-		as->as_vbase2 = vaddr;
+		as->as_vbase2 = start_page;
+		as->as_elfbase2 = vaddr;
 		as->as_npages2 = npages;
 		as->as_filesize2 = filesize;
 		as->as_offset2 = offset;
@@ -389,8 +392,8 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
 	KASSERT(as->as_npages1 != 0);
 	KASSERT(as->as_vbase2 != 0);
 	KASSERT(as->as_npages2 != 0);
-	KASSERT((as->as_vbase1 & PAGE_FRAME) == as->as_vbase1);
-	KASSERT((as->as_vbase2 & PAGE_FRAME) == as->as_vbase2);
+	/*KASSERT((as->as_vbase1 & PAGE_FRAME) == as->as_vbase1);
+	KASSERT((as->as_vbase2 & PAGE_FRAME) == as->as_vbase2);*/
 
 	status = pt_get_page(faultaddress);
 	if (status != 0)

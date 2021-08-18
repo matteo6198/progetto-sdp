@@ -53,10 +53,12 @@ struct addrspace {
 
 #if OPT_ONDEMAND_MANAGE        
         vaddr_t as_vbase1;
+        paddr_t as_elfbase1;
         size_t as_npages1;
         off_t as_offset1;
         size_t as_filesize1;
         vaddr_t as_vbase2;
+        paddr_t as_elfbase2;
         size_t as_npages2;
         off_t as_offset2;
         size_t as_filesize2;
