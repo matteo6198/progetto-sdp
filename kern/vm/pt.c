@@ -132,14 +132,13 @@ int pt_insert(vaddr_t v_addr, unsigned int n_pages, int read, int write, int exe
         entry->lo |= flags;
 
         /* insert into PT */
-        spinlock_acquire(&pt_lock);
         ptr = pagetable + pt_hash(v_addr);
         tmp = kmalloc(sizeof(struct pt));
         if(tmp == NULL){
-            spinlock_release(&pt_lock);
             kfree(entry);
             return 1;
         }
+        spinlock_acquire(&pt_lock);
         tmp->entry = entry;
         tmp->next = ptr->next;
         ptr->next = tmp;    

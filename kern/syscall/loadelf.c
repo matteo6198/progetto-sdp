@@ -334,11 +334,27 @@ int load_page(vaddr_t vaddr, int is_executable){
 	// find segment
 	if(vaddr >= as->as_vbase1 && vaddr < as->as_vbase1 + as->as_npages1 * PAGE_SIZE){
 		offset = as->as_offset1 + vaddr - as->as_vbase1;
-		filesize = (vaddr + PAGE_SIZE - as->as_vbase1 > as->as_filesize1)? as->as_filesize1 - (vaddr - as->as_vbase1) : PAGE_SIZE;
+		if(vaddr + PAGE_SIZE - as->as_vbase1 > as->as_filesize1){
+			if(vaddr - as->as_vbase1 > as->as_filesize1)
+				filesize = 0;
+			else
+				filesize =  as->as_filesize1 - (vaddr - as->as_vbase1);
+		}else{
+			filesize = PAGE_SIZE;
+		}
+		//filesize = (vaddr + PAGE_SIZE - as->as_vbase1 > as->as_filesize1)? as->as_filesize1 - (vaddr - as->as_vbase1) : PAGE_SIZE;
 	}
 	else if(vaddr >= as->as_vbase2 && vaddr < as->as_vbase2 + as->as_npages2 * PAGE_SIZE){
 		offset = as->as_offset2 + vaddr - as->as_vbase2;
-		filesize = (vaddr + PAGE_SIZE - as->as_vbase2 > as->as_filesize2)? as->as_filesize2 - (vaddr - as->as_vbase2) : PAGE_SIZE;
+		if(vaddr + PAGE_SIZE - as->as_vbase2 > as->as_filesize2){
+			if(vaddr - as->as_vbase2 > as->as_filesize2)
+				filesize = 0;
+			else
+				filesize =  as->as_filesize2 - (vaddr - as->as_vbase2);
+		}else{
+			filesize = PAGE_SIZE;
+		}
+		//filesize = (vaddr + PAGE_SIZE - as->as_vbase2 > as->as_filesize2)? as->as_filesize2 - (vaddr - as->as_vbase2) : PAGE_SIZE;
 	}
 	else{
 		return 0;
