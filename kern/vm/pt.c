@@ -1,7 +1,5 @@
 #include <pt.h>
 
-#define CLUSTER_SIZE 4
-
 pt_entry* pagetable;
 static int nClusters = 0;
 static int start_cluster = 0;
@@ -178,4 +176,20 @@ void pt_getkpages(uint32_t n){
 
     for(i=(start_cluster - n)* CLUSTER_SIZE; i < (unsigned int)start_cluster * CLUSTER_SIZE; i++)
         free_ppage(i * PAGE_SIZE);
+}
+
+int pt_stats(void){
+    int i, pfree = 0;
+
+    spinlock_acquire(&pt_lock);
+    for(i=0;i<nClusters*CLUSTER_SIZE;i++){
+        if(pagetable[i] == 0){
+            pfree++;
+            kprintf("F ");
+        }else{
+            kprintf("U ");
+        }
+    }
+    spinlock_release(&pt_lock);
+    return pfree;
 }

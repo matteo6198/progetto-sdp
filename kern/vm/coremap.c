@@ -4,6 +4,7 @@ static unsigned long *allocated_size;
 static char *allocated_pages;
 static int active = 0;
 static unsigned long nRamFrames = 0;
+static unsigned long kernPages = 0;
 static struct spinlock memSpinLock = SPINLOCK_INITIALIZER;
 static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 
@@ -96,6 +97,7 @@ getppages(unsigned long npages)
 		if (active)
 		{
 			pt_getkpages(npages);
+			kernPages += ((npages + CLUSTER_SIZE)/CLUSTER_SIZE) * CLUSTER_SIZE;
 			addr = getFreePages(npages);
 			page = addr / PAGE_SIZE;
 			for (i = page; i < page + npages; i++)
@@ -201,6 +203,7 @@ void vm_bootstrap(void)
 #endif /* OPT_VM_MANAGE */
 #if OPT_ONDEMAND_MANAGE
     pt_bootstrap(start / PAGE_SIZE);
+	kernPages = ((start / PAGE_SIZE + CLUSTER_SIZE) / CLUSTER_SIZE) * CLUSTER_SIZE;
 #endif
 }
 
@@ -266,7 +269,7 @@ void memstats(void)
 		return;
 	}
 	kprintf("Memory view:\n");
-	for (i = free_pages = 0; i < nRamFrames; i++)
+	for (i = free_pages = 0; i < kernPages; i++)
 	{
 		if (isPageFree(i))
 		{
@@ -276,8 +279,10 @@ void memstats(void)
 		else
 			kprintf("U ");
 	}
-	kprintf("\n");
 	spinlock_release(&memSpinLock);
+
+	free_pages += pt_stats();
+	kprintf("\n");
 
 	free_mem = free_pages * PAGE_SIZE;
 	used_mem = nRamFrames * PAGE_SIZE - free_mem;

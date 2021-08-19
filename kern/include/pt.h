@@ -24,6 +24,8 @@
 #include <proc_syscalls.h>
 #include <vm_tlb.h>
 
+#define CLUSTER_SIZE 4
+
 /* macros for accessing the PT entry fields */
 #define PT_V_ADDR(entry) ((unsigned int)((entry) & PAGE_FRAME))
 #define PT_PID(entry)    ((int)((entry) & (~PAGE_FRAME)))
@@ -42,5 +44,8 @@ void pt_delete_PID(struct addrspace *as, pid_t pid);
 
 /* allocate clusters for kernel pages*/
 void pt_getkpages(uint32_t n);
+
+/* stats for used and unused pages */
+int pt_stats(void);
 
 #endif
