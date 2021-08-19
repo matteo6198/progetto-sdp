@@ -20,7 +20,6 @@ void pageSetUsed(unsigned long i)
 {
 #if BITMAP
 	/* clearing the bit means page used */
-	KASSERT(i < nRamFrames);
 	allocated_pages[i / 8] &= ~(1 << (i % 8));
 #else
 	allocated_pages[i] = PAGE_USED;
@@ -94,21 +93,20 @@ getppages(unsigned long npages)
 	if (addr == 0)
 	{
 		unsigned long page, i;
-		spinlock_acquire(&stealmem_lock);
-		addr = ram_stealmem(npages);
-		spinlock_release(&stealmem_lock);
-		if(addr == 0){
-			pt_getkpages(npages);
-			addr = getFreePages(npages);
-		}
 		if (active)
 		{
+			pt_getkpages(npages);
+			addr = getFreePages(npages);
 			page = addr / PAGE_SIZE;
 			for (i = page; i < page + npages; i++)
 			{
 				pageSetUsed(i);
 			}
 			allocated_size[page] = npages;
+		}else{
+			spinlock_acquire(&stealmem_lock);
+			addr = ram_stealmem(npages);
+			spinlock_release(&stealmem_lock);
 		}
 	}
 	return addr;
@@ -167,6 +165,7 @@ void vm_bootstrap(void)
 	allocated_size = kmalloc(nRamFrames * sizeof(unsigned long));
 	if (allocated_pages == NULL || allocated_size == NULL)
 	{
+		spinlock_release(&memSpinLock);
 		return;
 	}
 	spinlock_acquire(&memSpinLock);
@@ -201,7 +200,7 @@ void vm_bootstrap(void)
 	kprintf("virtual memory boot completed...\n");
 #endif /* OPT_VM_MANAGE */
 #if OPT_ONDEMAND_MANAGE
-    pt_bootstrap();
+    pt_bootstrap(start / PAGE_SIZE);
 #endif
 }
 
@@ -305,11 +304,4 @@ void free_ppage(paddr_t paddr){
 
 	spinlock_release(&memSpinLock);
 
-}
-
-uint32_t get_first_free(void){
-	unsigned long i = nRamFrames - 1;
-	while(isPageFree(i))
-		i--;
-	return i+1;
 }

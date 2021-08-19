@@ -32,7 +32,7 @@
 typedef int pt_entry;
 
 /* bootstrap for the page table */
-void pt_bootstrap(void);
+void pt_bootstrap(int first_free);
 
 /* returns the entry corresponding to the page associated to the address v_addr (if that page is not in memory it will be loaded)*/
 int pt_get_page(vaddr_t v_addr);

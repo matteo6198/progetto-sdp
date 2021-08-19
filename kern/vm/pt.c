@@ -5,23 +5,24 @@
 pt_entry* pagetable;
 static int nClusters = 0;
 static int start_cluster = 0;
+//static int hash_mask = 0;
 struct spinlock pt_lock = SPINLOCK_INITIALIZER;
 
 /* bootstrap for the page table */
-void pt_bootstrap(void){
-    unsigned int first_free;
-    int cnt;
-    first_free = (get_first_free() + CLUSTER_SIZE) / CLUSTER_SIZE + 1;
-    nClusters = ((ram_getsize() / PAGE_SIZE) - (first_free * CLUSTER_SIZE)) / CLUSTER_SIZE;
+void pt_bootstrap(int first_free){
+    first_free = (first_free + CLUSTER_SIZE) / CLUSTER_SIZE;
+    nClusters = ((ram_getsize() / PAGE_SIZE) - first_free) / CLUSTER_SIZE;
     start_cluster = first_free;
+    // build mask
+    int cnt = 1;
     // allocating page table
-    pagetable = kmalloc(nClusters * CLUSTER_SIZE * sizeof(pt_entry));
+    pagetable = kmalloc(nClusters * sizeof(pt_entry));
     if(pagetable == NULL)
         panic("Error allocating pagetable: out of memory.");
     // init page table
     for(cnt = 0; cnt < nClusters * CLUSTER_SIZE; cnt++){
         pagetable[cnt] = 0;
-        pageSetUsed(cnt+start_cluster * CLUSTER_SIZE);
+        pageSetUsed(cnt+start_cluster);
     }
 }
 
