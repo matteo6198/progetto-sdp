@@ -50,6 +50,9 @@
 #include <vnode.h>
 #include <limits.h>
 #include <opt-proc_manage.h>
+
+#include <pt.h>
+#include <opt-paging.h>
 /*
  * The process for the kernel; this holds all the kernel-only threads.
  */
@@ -266,6 +269,9 @@ proc_destroy(struct proc *proc)
 			as = proc->p_addrspace;
 			proc->p_addrspace = NULL;
 		}
+#if OPT_PAGING
+		pt_delete_PID(as, proc->pid);
+#endif
 		as_destroy(as);
 	}
 

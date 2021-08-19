@@ -80,9 +80,7 @@ as_create(void)
 void as_destroy(struct addrspace *as)
 {
 	vm_can_sleep();
-#if OPT_ONDEMAND_MANAGE
-	pt_delete_PID(as);
-#else
+#if !OPT_ONDEMAND_MANAGE
 	free_kpages(PADDR_TO_KVADDR(as->as_pbase1));
 	free_kpages(PADDR_TO_KVADDR(as->as_pbase2));
 	free_kpages(PADDR_TO_KVADDR(as->as_stackpbase));
@@ -138,11 +136,6 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 	sz = (sz + PAGE_SIZE - 1) & PAGE_FRAME;
 
 	npages = sz / PAGE_SIZE;
-
-	if (pt_insert(start_page, npages, readable, writeable, executable))
-	{
-		return ENOSYS;
-	}
 
 	if (as->as_vbase1 == 0)
 	{
@@ -278,10 +271,7 @@ int as_complete_load(struct addrspace *as)
 int as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 {
 	(void)as;
-#if OPT_ONDEMAND_MANAGE
-	//TODO: what to do with as?
-	pt_insert(USERSTACK - STACKPAGES * PAGE_SIZE, STACKPAGES, 1, 1, 0);
-#else
+#if !OPT_ONDEMAND_MANAGE
 	KASSERT(as->as_stackpbase != 0);
 #endif
 	*stackptr = USERSTACK;
@@ -311,10 +301,6 @@ int as_copy(struct addrspace *old, struct addrspace **ret)
 	new->as_offset1 = old->as_offset1;
 	new->as_filesize1 = old->as_filesize1;
 	new->as_flags = old->as_flags;
-
-	pt_insert(new->as_vbase1, new->as_npages1, (new->as_flags & 4), (new->as_flags & 2), (new->as_flags & 1));
-	pt_insert(new->as_vbase2, new->as_npages2, new->as_flags & 0x20, new->as_flags & 0x10, new->as_flags & 8);
-	pt_insert(USERSTACK - STACKPAGES * PAGE_SIZE, STACKPAGES, 1, 1, 0);
 #endif
 
 #if !OPT_ONDEMAND_MANAGE
@@ -392,8 +378,8 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
 	KASSERT(as->as_npages1 != 0);
 	KASSERT(as->as_vbase2 != 0);
 	KASSERT(as->as_npages2 != 0);
-	/*KASSERT((as->as_vbase1 & PAGE_FRAME) == as->as_vbase1);
-	KASSERT((as->as_vbase2 & PAGE_FRAME) == as->as_vbase2);*/
+	KASSERT((as->as_vbase1 & PAGE_FRAME) == as->as_vbase1);
+	KASSERT((as->as_vbase2 & PAGE_FRAME) == as->as_vbase2);
 
 	status = pt_get_page(faultaddress);
 	if (status != 0)

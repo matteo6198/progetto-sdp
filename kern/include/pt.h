@@ -25,25 +25,11 @@
 #include <vm_tlb.h>
 
 /* macros for accessing the PT entry fields */
-#define PT_V_ADDR(entry) (entry->hi & PAGE_FRAME)
-#define PT_P_ADDR(entry) (entry->lo & PAGE_FRAME)
-#define PT_PID(entry)    (entry->hi & (~PAGE_FRAME))
-#define PT_RAM(entry)    (entry->lo & 1)
-#define PT_SWAP(entry)   ((entry->lo & 2) >> 1)
-#define PT_DIRTY(entry)  ((entry->lo & 4) >> 2)
-#define PT_READ(entry)   ((entry->lo & 8) >> 3)
-#define PT_WRITE(entry)  ((entry->lo & 16) >> 4)
-#define PT_EXEC(entry)   ((entry->lo & 32) >> 5)
+#define PT_V_ADDR(entry) ((unsigned int)((entry) & PAGE_FRAME))
+#define PT_PID(entry)    ((int)((entry) & (~PAGE_FRAME)))
+#define PT_P_ADDR(entry) ((entry) * PAGE_SIZE)
 
-struct pt_entry{
-    int hi;     /* contains v_addr and pid */
-    int lo;     /* contains p_addr and flags */
-};
-
-struct pt{
-    struct pt_entry *entry;
-    struct pt *next;
-};
+typedef int pt_entry;
 
 /* bootstrap for the page table */
 void pt_bootstrap(void);
@@ -51,10 +37,10 @@ void pt_bootstrap(void);
 /* returns the entry corresponding to the page associated to the address v_addr (if that page is not in memory it will be loaded)*/
 int pt_get_page(vaddr_t v_addr);
 
-/* insert n_pages pages into the page table without allocating them in RAM */
-int pt_insert(vaddr_t v_addr, unsigned int n_pages, int read, int write, int exec);
-
 /* delete all pages of this process from page table */
-void pt_delete_PID(struct addrspace *as);
+void pt_delete_PID(struct addrspace *as, pid_t pid);
+
+/* allocate clusters for kernel pages*/
+void pt_getkpages(uint32_t n);
 
 #endif

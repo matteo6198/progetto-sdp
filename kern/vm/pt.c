@@ -1,224 +1,182 @@
 #include <pt.h>
 
-struct pt* pagetable;
-static int nRamFrames = 0;
+#define CLUSTER_SIZE 4
+
+pt_entry* pagetable;
+static int nClusters = 0;
+static int start_cluster = 0;
 //static int hash_mask = 0;
 struct spinlock pt_lock = SPINLOCK_INITIALIZER;
 
 /* bootstrap for the page table */
 void pt_bootstrap(void){
-    nRamFrames = (ram_getsize() / PAGE_SIZE);
+    unsigned int first_free;
     // build mask
     int cnt = 1;
-    /*hash_mask = 1;
-    while(cnt < nRamFrames){
-        cnt = cnt << 1;
-        hash_mask = (hash_mask << 1) | 1;
-    }*/
     // allocating page table
-    pagetable = kmalloc(nRamFrames * sizeof(struct pt));
+    pagetable = kmalloc(nClusters * sizeof(pt_entry));
     if(pagetable == NULL)
         panic("Error allocating pagetable: out of memory.");
+    first_free = (get_first_free() + CLUSTER_SIZE) / CLUSTER_SIZE;
+    nClusters = ((ram_getsize() / PAGE_SIZE) - (first_free * CLUSTER_SIZE)) / CLUSTER_SIZE;
+    start_cluster = first_free;
     // init page table
-    for(cnt = 0; cnt < nRamFrames; cnt++){
-        pagetable[cnt].next = NULL;
-        pagetable[cnt].entry = NULL;
+    for(cnt = 0; cnt < nClusters * CLUSTER_SIZE; cnt++){
+        pagetable[cnt] = 0;
+        pageSetUsed(cnt+start_cluster * CLUSTER_SIZE);
     }
 }
 
 /* returns the index of the page at address v_addr in the pagetable using an hash function */
 static int pt_hash(vaddr_t v_addr){
     int res = (int) (v_addr >> 12);
-    return res % nRamFrames;
-}
-
-/* select the victim page among the one in RAM */
-static struct pt* pt_get_victim(void){
-    return 0;
+    return res % nClusters;
 }
 
 /* returns the entry corresponding to the page associated to the address v_addr (if that page is not in memory it will be loaded)
 */
 int pt_get_page(vaddr_t v_addr){
     v_addr &= PAGE_FRAME;
-    // ricerca nella PT
-    int found = 0;
-    struct pt* ptr = pagetable + pt_hash(v_addr);
-    spinlock_acquire(&pt_lock);
-    while(ptr!=NULL){
-        if(ptr->entry !=NULL && PT_PID(ptr->entry) == (unsigned int) curproc->pid 
-            && PT_V_ADDR(ptr->entry) == v_addr){
-                found = 1;
-                if(PT_RAM(ptr->entry)){
-                    spinlock_release(&pt_lock);
-                    tlb_insert(v_addr, PT_P_ADDR(ptr->entry));
-                    return 0;
-                }else{
-                    break;
-                }
-            }
-        ptr = ptr->next;
-    }
-    spinlock_release(&pt_lock);
-    if(!found){
-        // page not found
+    pid_t pid = curproc->pid;
+    int i, write, exec, first_free = -1;
+    struct addrspace* as = proc_getas();
+
+        // get segment of v_addr to get flags
+    if(v_addr >= as->as_vbase1 && v_addr < as->as_vbase1 + as->as_npages1 * PAGE_SIZE){
+        // segment 1
+        write = as->as_flags & 0x2;
+        exec = as->as_flags & 0x1;
+    }else if(v_addr >= as->as_vbase2 && v_addr < as->as_vbase2 + as->as_npages2 * PAGE_SIZE){
+        // segment 2
+        write = as->as_flags & 0x10;
+        exec = as->as_flags & 0x8;
+    }else if(v_addr >= USERSTACK - STACKPAGES * PAGE_SIZE && v_addr < USERSTACK){
+        // stack 
+        exec = 0;
+        write = 1;
+    }else{
+        // page out of segments
         return ERR_CODE;
     }
 
-    paddr_t ram_page_number = getFreePages(1);  // ritorna 0 se no frame libere
-    if(!ram_page_number){
-        struct pt* victim = pt_get_victim();   // page replacement 
-        int result = 0;//swap_out(PT_P_ADDR((victim->entry));   
-        if(!result){
-            // impossibile fare swap -> kill al processo corrente
-            // Ruggero: forse conviene ritornare solo un errore e lasciarlo gestire al chiamante
-            //sys__exit(ENOMEM);
-            return ERR_CODE;
+    // ricerca nella PT
+    pt_entry* ptr = pagetable + pt_hash(v_addr) * CLUSTER_SIZE;
+    spinlock_acquire(&pt_lock);
+    for(i=0;i<CLUSTER_SIZE;i++){
+        if(PT_V_ADDR(*(ptr+i)) == v_addr && PT_PID(*(ptr + i)) == pid){
+            spinlock_release(&pt_lock);
+            tlb_insert(v_addr, PT_P_ADDR((ptr-pagetable)+i));
+            return 0;
+        }else if(first_free < 0 && *(ptr + i) == 0){
+            first_free = i;
         }
-        // aggiornamento PT
-        victim->entry->lo &= 0xFFFFFFFE;
-        victim->entry->lo |= 2;
-        ram_page_number = PT_P_ADDR(victim->entry);
     }
-    // aggiornamento entry nell PT e inserimento nella TLB
-    ptr->entry->lo &= ~PAGE_FRAME; // clear dei bit
-    ptr->entry->lo |= ram_page_number;  // insert del physycal addr
-    ptr->entry->lo |= 1;    // in RAM
-    ptr->entry->lo &= ~2;   // not swapped
-    tlb_insert(v_addr, PT_P_ADDR(ptr->entry));     // la TLB deve essere settata prima di fare le operazioni di lettura
+
+    if(i>= CLUSTER_SIZE && first_free < 0){
+        // swap out
+        i = random() % CLUSTER_SIZE;
+        // swap out physical page i
+    }else{
+        i = first_free;
+    }
+    *(ptr + i) = v_addr | pid;
+
+    spinlock_release(&pt_lock);
+
+    tlb_insert(v_addr, PT_P_ADDR((ptr-pagetable)+i));     // la TLB deve essere settata prima di fare le operazioni di lettura
     
     bzero((void *)v_addr, PAGE_SIZE);
 
-    if(PT_SWAP(ptr->entry)){
-        //f(!swap_in(v_addr)){
-            // stop processo corrente
-            return ERR_CODE;
-        //}
-
-    }else{
-        // load della pagina da disco
-        if(load_page(v_addr, PT_EXEC(ptr->entry) != 0)){
+    //if(!swap_in(v_addr, pid)){
+        if(load_page(v_addr, exec)){
             // stop processo corrente 
             return ERR_CODE;
         }
+    //}
+
+    if(!write){
+        uint32_t pos = tlb_probe(v_addr, PT_P_ADDR((ptr-pagetable)+i));
+        tlb_write(v_addr, PT_P_ADDR((ptr-pagetable)+i) | TLBLO_VALID, pos);
     }
 
-    if(!PT_WRITE(ptr->entry)){
-        uint32_t i = tlb_probe(PT_V_ADDR(ptr->entry), PT_P_ADDR(ptr->entry));
-        tlb_write(PT_V_ADDR(ptr->entry), PT_P_ADDR(ptr->entry) | TLBLO_VALID, i);
-    }
-
-    return 0;
-}
-
-/* insert n_pages pages into the page table without allocating them in RAM */
-int pt_insert(vaddr_t v_addr, unsigned int n_pages, int read, int write, int exec){
-    unsigned int i;
-    struct pt* ptr, *tmp;
-    struct pt_entry* entry;
-    int flags = 0;
-    KASSERT((v_addr & ~PAGE_FRAME) == 0);
-
-    if(read)
-        flags |= 1<<3;
-    if(write)
-        flags |= 1<<4;
-    if(exec)
-        flags |= 1<<5;
-
-    for(i=0;i<n_pages;i++, v_addr+=PAGE_SIZE){
-        entry = kmalloc(sizeof(struct pt_entry));
-        if(entry == NULL){
-            return 1;
-        }
-        /* set entry fields */
-        entry->hi = (int) v_addr;
-        entry->hi |= curproc->pid & ~PAGE_FRAME;
-        entry->lo = 0;
-        entry->lo |= flags;
-
-        /* insert into PT */
-        ptr = pagetable + pt_hash(v_addr);
-        tmp = kmalloc(sizeof(struct pt));
-        if(tmp == NULL){
-            kfree(entry);
-            return 1;
-        }
-        spinlock_acquire(&pt_lock);
-        tmp->entry = entry;
-        tmp->next = ptr->next;
-        ptr->next = tmp;    
-        spinlock_release(&pt_lock);    
-    }
     return 0;
 }
 
 /* delete all pages of this process from page table */
-void pt_delete_PID(struct addrspace *as){
-    unsigned int i;
-    struct pt* tmp, *prev;
+void pt_delete_PID(struct addrspace *as, pid_t pid){
+    unsigned int i, j, found=0;
+    pt_entry* ptr;
     vaddr_t addr;
 
     /* clean first segment */
     for(i=0, addr = as->as_vbase1;i<as->as_npages1;i++, addr+=PAGE_SIZE){
-        prev = pagetable + pt_hash(addr);
+        ptr = pagetable + pt_hash(addr) * CLUSTER_SIZE;
         spinlock_acquire(&pt_lock);
-        while(prev != NULL && prev->next != NULL &&
-                (prev->next->entry == NULL ||
-                PT_V_ADDR(prev->next->entry) != addr))
-            prev = prev->next;
-        if(prev == NULL){
-            spinlock_release(&pt_lock);
-            continue;
+        for(j=0;j<CLUSTER_SIZE;j++){
+            if(PT_V_ADDR(*(ptr+j)) == addr && PT_PID(*(ptr + j)) == pid){
+                *(ptr+j) = 0;
+                found = 1;
+                break;
+            }
         }
-        tmp = prev->next;
-        prev->next = tmp->next;
         spinlock_release(&pt_lock);
-        if(PT_RAM(tmp->entry))
-            free_ppage(PT_P_ADDR(tmp->entry));
-        kfree(tmp->entry);
-        kfree(tmp);
+        if(!found){
+            // remove from swap if present
+
+        }
     }
     /* clean second segment */
+    found = 0;
     for(i=0, addr = as->as_vbase2;i<as->as_npages2;i++, addr+=PAGE_SIZE){
-        prev = pagetable + pt_hash(addr);
+        ptr = pagetable + pt_hash(addr) * CLUSTER_SIZE;
         spinlock_acquire(&pt_lock);
-        while(prev != NULL && prev->next != NULL &&
-                (prev->next->entry == NULL ||
-                PT_V_ADDR(prev->next->entry) != addr))
-            prev = prev->next;
-        if(prev == NULL || prev->next == NULL){
-            spinlock_release(&pt_lock);
-            continue;
+        for(j=0;j<CLUSTER_SIZE;j++){
+            if(PT_V_ADDR(*(ptr+j)) == addr && PT_PID(*(ptr + j)) == pid){
+                *(ptr+j) = 0;
+                found = 1;
+                break;
+            }
         }
-        tmp = prev->next;
-        prev->next = tmp->next;
         spinlock_release(&pt_lock);
-        if(PT_RAM(tmp->entry))
-            free_ppage(PT_P_ADDR(tmp->entry));
-        kfree(tmp->entry);
-        kfree(tmp);
+        if(!found){
+            // remove from swap if present
+
+        }
     }
     /* clean stack */
     addr = USERSTACK - STACKPAGES * PAGE_SIZE;
     for(i=0;i<STACKPAGES; i++, addr += PAGE_SIZE){
-        prev = pagetable + pt_hash(addr);
+        ptr = pagetable + pt_hash(addr) * CLUSTER_SIZE;
         spinlock_acquire(&pt_lock);
-        while(prev != NULL && prev->next != NULL &&
-                (prev->next->entry == NULL ||
-                PT_V_ADDR(prev->next->entry) != addr))
-            prev = prev->next;
-        if(prev == NULL){
-            spinlock_release(&pt_lock);
-            continue;
+        for(j=0;j<CLUSTER_SIZE;j++){
+            if(PT_V_ADDR(*(ptr+j)) == addr && PT_PID(*(ptr + j)) == pid){
+                *(ptr+j) = 0;
+                found = 1;
+                break;
+            }
         }
-        tmp = prev->next;
-        prev->next = tmp->next;
         spinlock_release(&pt_lock);
-        if(PT_RAM(tmp->entry))
-            free_ppage(PT_P_ADDR(tmp->entry));
-        kfree(tmp->entry);
-        kfree(tmp);
+        if(!found){
+            // remove from swap if present
+
+        }
     }
 
+}
+
+void pt_getkpages(uint32_t n){
+    unsigned int i;
+    n = (n + CLUSTER_SIZE) / CLUSTER_SIZE;
+    spinlock_acquire(&pt_lock);
+    for(i=start_cluster; i < start_cluster + n; i++){
+        if(*(pagetable + i) != 0){
+            // swap out
+        }
+    }
+    start_cluster += n;
+    nClusters -= n;
+    spinlock_release(&pt_lock);
+
+    for(i=start_cluster; i < start_cluster + n; i++)
+        free_ppage(i * PAGE_SIZE);
 }

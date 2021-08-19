@@ -23,4 +23,6 @@
 
 paddr_t getFreePages(unsigned long n);
 void free_ppage(paddr_t paddr);
+void pageSetUsed(unsigned long i);
+uint32_t get_first_free(void);
 #endif /* _COREMAP_H_ */

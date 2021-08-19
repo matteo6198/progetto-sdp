@@ -16,7 +16,7 @@ static void pageSetFree(unsigned long i)
 	allocated_pages[i] = PAGE_FREE;
 #endif
 }
-static void pageSetUsed(unsigned long i)
+void pageSetUsed(unsigned long i)
 {
 #if BITMAP
 	/* clearing the bit means page used */
@@ -93,17 +93,20 @@ getppages(unsigned long npages)
 	if (addr == 0)
 	{
 		unsigned long page, i;
-		spinlock_acquire(&stealmem_lock);
-		addr = ram_stealmem(npages);
-		spinlock_release(&stealmem_lock);
 		if (active)
 		{
+			pt_getkpages(npages);
+			addr = getFreePages(npages);
 			page = addr / PAGE_SIZE;
 			for (i = page; i < page + npages; i++)
 			{
 				pageSetUsed(i);
 			}
 			allocated_size[page] = npages;
+		}else{
+			spinlock_acquire(&stealmem_lock);
+			addr = ram_stealmem(npages);
+			spinlock_release(&stealmem_lock);
 		}
 	}
 	return addr;
@@ -301,4 +304,11 @@ void free_ppage(paddr_t paddr){
 
 	spinlock_release(&memSpinLock);
 
+}
+
+uint32_t get_first_free(void){
+	unsigned long i = nRamFrames - 1;
+	while(isPageFree(i))
+		i--;
+	return i+1;
 }
