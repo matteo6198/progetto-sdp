@@ -25,9 +25,9 @@ void pt_bootstrap(int first_free){
 }
 
 /* returns the index of the page at address v_addr in the pagetable using an hash function */
-static int pt_hash(vaddr_t v_addr){
+static int pt_hash(vaddr_t v_addr, pid_t pid){
     int res = (int) (v_addr >> 12);
-    return res % nClusters;
+    return (res * pid) % nClusters;
 }
 
 /* returns the entry corresponding to the page associated to the address v_addr (if that page is not in memory it will be loaded)
@@ -57,7 +57,7 @@ int pt_get_page(vaddr_t v_addr){
     }
 
     // ricerca nella PT
-    pt_entry* ptr = pagetable + pt_hash(v_addr) * CLUSTER_SIZE;
+    pt_entry* ptr = pagetable + pt_hash(v_addr, pid) * CLUSTER_SIZE;
     spinlock_acquire(&pt_lock);
     for(i=0;i<CLUSTER_SIZE;i++){
         if(PT_V_ADDR(ptr[i]) == v_addr && PT_PID(ptr[i]) == pid){
@@ -116,7 +116,7 @@ void pt_delete_PID(struct addrspace *as, pid_t pid){
 
     /* clean first segment */
     for(i=0, addr = as->as_vbase1;i<as->as_npages1;i++, addr+=PAGE_SIZE){
-        ptr = pagetable + pt_hash(addr) * CLUSTER_SIZE;
+        ptr = pagetable + pt_hash(addr, pid) * CLUSTER_SIZE;
         spinlock_acquire(&pt_lock);
         for(j=0;j<CLUSTER_SIZE;j++){
             if(PT_V_ADDR(*(ptr+j)) == addr && PT_PID(*(ptr + j)) == pid){
@@ -134,7 +134,7 @@ void pt_delete_PID(struct addrspace *as, pid_t pid){
     /* clean second segment */
     found = 0;
     for(i=0, addr = as->as_vbase2;i<as->as_npages2;i++, addr+=PAGE_SIZE){
-        ptr = pagetable + pt_hash(addr) * CLUSTER_SIZE;
+        ptr = pagetable + pt_hash(addr, pid) * CLUSTER_SIZE;
         spinlock_acquire(&pt_lock);
         for(j=0;j<CLUSTER_SIZE;j++){
             if(PT_V_ADDR(*(ptr+j)) == addr && PT_PID(*(ptr + j)) == pid){
@@ -152,7 +152,7 @@ void pt_delete_PID(struct addrspace *as, pid_t pid){
     /* clean stack */
     addr = USERSTACK - STACKPAGES * PAGE_SIZE;
     for(i=0;i<STACKPAGES; i++, addr += PAGE_SIZE){
-        ptr = pagetable + pt_hash(addr) * CLUSTER_SIZE;
+        ptr = pagetable + pt_hash(addr, pid) * CLUSTER_SIZE;
         spinlock_acquire(&pt_lock);
         for(j=0;j<CLUSTER_SIZE;j++){
             if(PT_V_ADDR(*(ptr+j)) == addr && PT_PID(*(ptr + j)) == pid){
@@ -178,17 +178,22 @@ void pt_getkpages(uint32_t n){
         if(pagetable[i] != 0 && PT_DIRTY(pagetable[i])){
             // swap out
 
+            // invalid tlb entry
+            int j = tlb_probe(PT_V_ADDR(pagetable[i]), 0);
+            if(j >= 0){
+                tlb_write(TLBHI_INVALID(j), TLBLO_INVALID(), j);
+            }
         }
         pagetable[i] = 0;
     }
     start_cluster += n;
     nClusters -= n;
-    spinlock_release(&pt_lock);
 
     for(i=(start_cluster - n)* CLUSTER_SIZE; i < (unsigned int)start_cluster * CLUSTER_SIZE; i++)
         free_ppage(i * PAGE_SIZE);
     
     tlb_invalidate();
+    spinlock_release(&pt_lock);
 }
 
 void pt_freekpages(uint32_t n_clusters){
@@ -200,6 +205,11 @@ void pt_freekpages(uint32_t n_clusters){
         if(pagetable[i] != 0 && PT_DIRTY(pagetable[i])){
             // swap out
 
+            // invalid tlb entry
+            int j = tlb_probe(PT_V_ADDR(pagetable[i]), 0);
+            if(j >= 0){
+                tlb_write(TLBHI_INVALID(j), TLBLO_INVALID(), j);
+            }
         }
         pagetable[i] = 0;
     }

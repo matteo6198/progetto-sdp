@@ -298,6 +298,8 @@ int as_copy(struct addrspace *old, struct addrspace **ret)
 #if OPT_ONDEMAND_MANAGE
 	new->as_offset2 = old->as_offset2;
 	new->as_filesize2 = old->as_filesize2;
+	new->as_elfbase2 = old->as_elfbase2;
+	new->as_elfbase1 = old->as_elfbase1;
 	new->as_offset1 = old->as_offset1;
 	new->as_filesize1 = old->as_filesize1;
 	new->as_flags = old->as_flags;
