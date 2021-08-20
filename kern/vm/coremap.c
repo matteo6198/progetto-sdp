@@ -97,7 +97,7 @@ getppages(unsigned long npages)
 		if (active)
 		{
 			pt_getkpages(npages);
-			kernPages += ((npages + CLUSTER_SIZE)/CLUSTER_SIZE) * CLUSTER_SIZE;
+			//kernPages += ((npages + CLUSTER_SIZE)/CLUSTER_SIZE) * CLUSTER_SIZE;
 			addr = getFreePages(npages);
 			page = addr / PAGE_SIZE;
 			for (i = page; i < page + npages; i++)
@@ -198,12 +198,12 @@ void vm_bootstrap(void)
 	}
 #endif /* ALLOCATE_ALL_AT_BOOT */
 	active = 1;
+	kernPages = ((start / PAGE_SIZE + CLUSTER_SIZE) / CLUSTER_SIZE) * CLUSTER_SIZE;
 	spinlock_release(&memSpinLock);
 	kprintf("virtual memory boot completed...\n");
 #endif /* OPT_VM_MANAGE */
 #if OPT_ONDEMAND_MANAGE
     pt_bootstrap(start / PAGE_SIZE);
-	kernPages = ((start / PAGE_SIZE + CLUSTER_SIZE) / CLUSTER_SIZE) * CLUSTER_SIZE;
 #endif
 }
 
@@ -221,6 +221,27 @@ alloc_kpages(unsigned npages)
 	}
 	return PADDR_TO_KVADDR(pa);
 }
+/*
+static void return_mem(void){
+	int i, cnt = 0;
+	i = (kernPages - 1);
+	while(i >= 0 && isPageFree(i)){
+		i--;
+		cnt++;
+	}
+	if(cnt / CLUSTER_SIZE > 2){
+		cnt /= CLUSTER_SIZE;
+		for(i=cnt*CLUSTER_SIZE; i> 0; i--){
+			kernPages--;
+			pageSetUsed(kernPages);
+		}
+	}else{
+		cnt = 0;
+	}
+	if(cnt != 0){
+		pt_freekpages(cnt);
+	}
+}*/
 
 void free_kpages(vaddr_t addr)
 {
@@ -245,6 +266,8 @@ void free_kpages(vaddr_t addr)
 	{
 		pageSetFree(i);
 	}
+	// return freed memory to pt system
+	//return_mem();
 	spinlock_release(&memSpinLock);
 #endif
 	(void)addr;
@@ -287,6 +310,7 @@ void memstats(void)
 	free_mem = free_pages * PAGE_SIZE;
 	used_mem = nRamFrames * PAGE_SIZE - free_mem;
 	kprintf("Free memory:\t%lu kB\nUsed memory:\t%lu kB\n", free_mem / 1024, used_mem / 1024);
+	kprintf("Kernel memory:\t%lu kB\n", kernPages * PAGE_SIZE / 1024);
 #else
 	kprintf("Virtual memory is not managed\n");
 #endif
@@ -307,6 +331,7 @@ void free_ppage(paddr_t paddr){
 	allocated_size[page] = 0;
 	pageSetFree(page);
 
+	kernPages++;
 	spinlock_release(&memSpinLock);
 
 }

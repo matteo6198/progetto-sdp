@@ -28,8 +28,9 @@
 
 /* macros for accessing the PT entry fields */
 #define PT_V_ADDR(entry) ((unsigned int)((entry) & PAGE_FRAME))
-#define PT_PID(entry)    ((int)((entry) & (~PAGE_FRAME)))
+#define PT_PID(entry)    ((int)(((entry) & (~PAGE_FRAME)) >> 1))
 #define PT_P_ADDR(entry) ((entry) * PAGE_SIZE)
+#define PT_DIRTY(entry)  ((entry) & 1 )
 
 typedef int pt_entry;
 
@@ -44,6 +45,9 @@ void pt_delete_PID(struct addrspace *as, pid_t pid);
 
 /* allocate clusters for kernel pages*/
 void pt_getkpages(uint32_t n);
+
+/* free allocated kernel clusters */
+void pt_freekpages(uint32_t n_clusters);
 
 /* stats for used and unused pages */
 int pt_stats(void);

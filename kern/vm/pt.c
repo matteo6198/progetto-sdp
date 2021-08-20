@@ -60,11 +60,11 @@ int pt_get_page(vaddr_t v_addr){
     pt_entry* ptr = pagetable + pt_hash(v_addr) * CLUSTER_SIZE;
     spinlock_acquire(&pt_lock);
     for(i=0;i<CLUSTER_SIZE;i++){
-        if(PT_V_ADDR(*(ptr+i)) == v_addr && PT_PID(*(ptr + i)) == pid){
+        if(PT_V_ADDR(ptr[i]) == v_addr && PT_PID(ptr[i]) == pid){
             spinlock_release(&pt_lock);
             tlb_insert(v_addr, PT_P_ADDR((ptr-pagetable)+i+ start_cluster * CLUSTER_SIZE));
             return 0;
-        }else if(first_free < 0 && *(ptr + i) == 0){
+        }else if(first_free < 0 && ptr[i] == 0){
             first_free = i;
         }
     }
@@ -72,11 +72,20 @@ int pt_get_page(vaddr_t v_addr){
     if(i>= CLUSTER_SIZE && first_free < 0){
         // swap out
         i = random() % CLUSTER_SIZE;
-        // swap out physical page i
+        if(PT_DIRTY(ptr[i])){
+            // swap out physical page i
+            // invalid tlb entry
+            int j = tlb_probe(PT_V_ADDR(ptr[i]), 0);
+            if(j >= 0){
+                tlb_write(TLBHI_INVALID(j), TLBLO_INVALID(), j);
+            }
+        }
     }else{
         i = first_free;
     }
-    *(ptr + i) = v_addr | pid;
+    ptr[i] = v_addr | (pid << 1);
+    if(write)
+        ptr[i] |= 1;
 
     spinlock_release(&pt_lock);
 
@@ -165,10 +174,12 @@ void pt_getkpages(uint32_t n){
     unsigned int i;
     n = (n + CLUSTER_SIZE) / CLUSTER_SIZE;
     spinlock_acquire(&pt_lock);
-    for(i=start_cluster * CLUSTER_SIZE; i < (start_cluster + n) * CLUSTER_SIZE; i++){
-        if(*(pagetable + i) != 0){
+    for(i=0; i < (unsigned int) nClusters * CLUSTER_SIZE; i++){
+        if(pagetable[i] != 0 && PT_DIRTY(pagetable[i])){
             // swap out
+
         }
+        pagetable[i] = 0;
     }
     start_cluster += n;
     nClusters -= n;
@@ -176,6 +187,24 @@ void pt_getkpages(uint32_t n){
 
     for(i=(start_cluster - n)* CLUSTER_SIZE; i < (unsigned int)start_cluster * CLUSTER_SIZE; i++)
         free_ppage(i * PAGE_SIZE);
+    
+    tlb_invalidate();
+}
+
+void pt_freekpages(uint32_t n_clusters){
+    unsigned int i;
+    spinlock_acquire(&pt_lock);
+    start_cluster -= n_clusters;
+    nClusters += n_clusters;
+    for(i=0; i < (unsigned int) nClusters * CLUSTER_SIZE; i++){
+        if(pagetable[i] != 0 && PT_DIRTY(pagetable[i])){
+            // swap out
+
+        }
+        pagetable[i] = 0;
+    }
+    tlb_invalidate();
+    spinlock_release(&pt_lock);
 }
 
 int pt_stats(void){
