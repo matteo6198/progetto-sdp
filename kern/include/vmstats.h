@@ -1,6 +1,8 @@
 #ifndef _VMSTATS_H_
 #define _VMSTATS_H_
 
+#include <lib.h>
+
 #define VMS_FAULTS          0 /* The number of TLB misses that have occurred (not including faults that cause a program to crash) */ 
 #define VMS_FAULTS_FREE     1 /* The number of TLB misses for which there was free space in the TLB to add the new TLB entry (i.e., no replacement is required)*/
 #define VMS_FAULTS_REPLACE  2 /* The number of TLB misses for which there was no free space for the new TLB entry, so replacement was required*/

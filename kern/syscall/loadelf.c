@@ -63,6 +63,7 @@
 #include "opt-ondemand_manage.h"
 #if OPT_ONDEMAND_MANAGE
 #include <pt.h>
+#include <vmstats.h>
 #endif
 #if !OPT_ONDEMAND_MANAGE
 /*
@@ -367,6 +368,8 @@ int load_page(vaddr_t vaddr, int is_executable){
 		//filesize = (vaddr + PAGE_SIZE - as->as_vbase2 > as->as_filesize2)? as->as_filesize2 - (vaddr - as->as_vbase2) : PAGE_SIZE;
 	}
 	else{
+    	bzero((void *)vaddr, PAGE_SIZE);
+		vms_update(VMS_FAULTS_ZEROED);
 		return 0;
 	}
 
@@ -390,7 +393,9 @@ int load_page(vaddr_t vaddr, int is_executable){
 		kprintf("ELF: short read on segment - file truncated?\n");
 		return ENOEXEC;
 	}
-
+	// update stats
+    vms_update(VMS_FAULTS_DISK);
+	vms_update(VMS_FAULTS_ELF);
 	return 0;
 }
 #endif

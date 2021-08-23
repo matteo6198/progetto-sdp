@@ -45,6 +45,7 @@ void vms_update(unsigned char code)
         vms_swapfile_writes++;
         break;
         default:
+        kprintf("Unknown stat code: %d\n", code);
     }
 }
 
@@ -60,4 +61,5 @@ void vms_print(void)
     kprintf("[vmstats] Page Faults from ELF: %u\n", vms_faults_elf);
     kprintf("[vmstats] Page Faults from Swapfile : %u\n", vms_faults_swapfile);
     kprintf("[vmstats] Swapfile Writes: %u\n", vms_swapfile_writes);
+    // TODO: check for equalities and print warning
 }

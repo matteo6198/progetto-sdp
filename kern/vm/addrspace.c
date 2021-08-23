@@ -37,6 +37,8 @@
 #include <vm_tlb.h>
 #include <opt-ondemand_manage.h>
 #include <opt-tlb_manage.h>
+#include <vmstats.h>
+
 static void
 vm_can_sleep(void)
 {
@@ -388,6 +390,9 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
 	{
 		return EFAULT;
 	}
+
+	// update stats
+	vms_update(VMS_FAULTS);
 	return 0;
 }
 

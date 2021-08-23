@@ -63,6 +63,8 @@ int pt_get_page(vaddr_t v_addr){
         if(PT_V_ADDR(ptr[i]) == v_addr && PT_PID(ptr[i]) == pid){
             spinlock_release(&pt_lock);
             tlb_insert(v_addr, PT_P_ADDR((ptr-pagetable)+i+ start_cluster * CLUSTER_SIZE));
+            // update stats
+            vms_update(VMS_RELOAD);
             return 0;
         }else if(first_free < 0 && ptr[i] == 0){
             first_free = i;
@@ -91,8 +93,6 @@ int pt_get_page(vaddr_t v_addr){
 
     tlb_insert(v_addr, PT_P_ADDR((ptr-pagetable)+i+ start_cluster * CLUSTER_SIZE));     // la TLB deve essere settata prima di fare le operazioni di lettura
     
-    bzero((void *)v_addr, PAGE_SIZE);
-
     //if(!swap_in(v_addr, pid)){
         if(load_page(v_addr, exec)){
             // stop processo corrente 
