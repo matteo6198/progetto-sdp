@@ -51,8 +51,11 @@
 #include <version.h>
 #include "autoconf.h"  // for pseudoconfig
 
-// include for hello task
-#include "hello.h"
+#include <opt-paging.h>
+
+#if OPT_PAGING
+#include <vmstats.h>
+#endif
 
 /*
  * These two pieces of data are maintained by the makefiles and build system.
@@ -151,6 +154,10 @@ shutdown(void)
 {
 
 	kprintf("Shutting down.\n");
+
+	#if OPT_PAGING
+	vms_print();
+	#endif
 
 	vfs_clearbootfs();
 	vfs_clearcurdir();
