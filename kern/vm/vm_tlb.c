@@ -4,6 +4,7 @@
 #include <vm.h>
 #include <lib.h>
 #include <spl.h>
+#include <vmstats.h>
 
 int tlb_get_rr_victim(void)
 {
@@ -24,6 +25,16 @@ void tlb_insert(vaddr_t vaddr, paddr_t paddr){
     spl = splhigh();
 
 	i = tlb_get_rr_victim();
+	tlb_read(&ehi, &elo, i);
+	if((elo & TLBLO_VALID) != TLBLO_VALID)
+	{
+		vms_update(VMS_FAULTS_FREE);
+	}
+	else
+	{
+		vms_update(VMS_FAULTS_REPLACE);
+	}
+
 	ehi = vaddr;
 	elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
 	//DEBUG(DB_VM, "tlb_manage: 0x%x -> 0x%x\n", vaddr, paddr);
@@ -38,5 +49,5 @@ void tlb_invalidate(void){
 	{
 		tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
 	}
-
+	vms_update(VMS_INVALIDATE)
 }
