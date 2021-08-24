@@ -49,5 +49,5 @@ void tlb_invalidate(void){
 	{
 		tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
 	}
-	vms_update(VMS_INVALIDATE)
+	vms_update(VMS_INVALIDATE);
 }
