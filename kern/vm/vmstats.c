@@ -54,12 +54,17 @@ void vms_print(void)
     kprintf("[vmstats] TLB Faults: %u\n", vms_faults);
     kprintf("[vmstats] TLB Faults with Free: %u\n", vms_faults_free);
     kprintf("[vmstats] TLB Faults with Replace: %u\n", vms_faults_replace);
+    if(vms_faults_free + vms_faults_replace != vms_faults)
+        kprintf("[vmstats] WARNING: \"TLB Faults with Free\" and \"TLB Faults with Replace\" should be equal to \"TLB Faults\"!\n");
     kprintf("[vmstats] TLB Invalidations: %u\n", vms_invalidate);
     kprintf("[vmstats] TLB Reloads: %u\n", vms_reload);
     kprintf("[vmstats] Page Faults (Zeroed) : %u\n", vms_faults_zeroed);
     kprintf("[vmstats] Page Faults (Disk): %u\n", vms_faults_disk);
+    if(vms_reload + vms_faults_zeroed + vms_faults_disk != vms_faults)
+        kprintf("[vmstats] WARNING: \"TLB Reloads\", \"Page Faults (Zeroed)\" and \"Page Faults (Disk)\" should be equal to \"TLB Faults\"!\n");
     kprintf("[vmstats] Page Faults from ELF: %u\n", vms_faults_elf);
-    kprintf("[vmstats] Page Faults from Swapfile : %u\n", vms_faults_swapfile);
+    kprintf("[vmstats] Page Faults from Swapfile: %u\n", vms_faults_swapfile);
+    if(vms_faults_elf + vms_faults_swapfile != vms_faults_disk)
+        kprintf("[vmstats] WARNING: \"Page Faults from ELF\" and \"Page Faults from Swapfile\" should be equal to \"Page Faults (Disk)\"!\n");
     kprintf("[vmstats] Swapfile Writes: %u\n", vms_swapfile_writes);
-    // TODO: check for equalities and print warning
 }
