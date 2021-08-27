@@ -76,7 +76,10 @@ int pt_get_page(vaddr_t v_addr){
         i = random() % CLUSTER_SIZE;
         if(PT_DIRTY(ptr[i])){
             // swap out physical page i
+            spinlock_release(&pt_lock);
+            //inside swap_out we acqurie another spinlock
             swap_out(PT_V_ADDR(ptr[i]), PT_P_ADDR((ptr-pagetable)+i+ start_cluster * CLUSTER_SIZE), PT_PID(ptr[i]));    // TODO: check for vaddr correspondence with paddr
+            spinlock_acquire(&pt_lock);
             // invalid tlb entry
             int j = tlb_probe(PT_V_ADDR(ptr[i]), 0);
             if(j >= 0){

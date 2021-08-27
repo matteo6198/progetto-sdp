@@ -55,6 +55,7 @@
 
 #if OPT_PAGING
 #include <vmstats.h>
+#include <swapfile.h>
 #endif
 
 /*
@@ -136,6 +137,10 @@ boot(void)
 	/* Default bootfs - but ignore failure, in case emu0 doesn't exist */
 	vfs_setbootfs("emu0");
 
+	// Added here because we need vfs to be initialized
+	#if OPT_PAGING
+	swap_bootstrap();
+	#endif
 	kheap_nextgeneration();
 
 	/*

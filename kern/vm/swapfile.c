@@ -78,18 +78,29 @@ void swap_bootstrap(void)
     //allocate 288 entries for freespace (2308/sizeof(char), to have 2308 bit)
     //freespace[i]<<7==0-->the last block of the i-th page is free in the swapfile
     freespace=kmalloc(FREE_SIZE * sizeof(char));
+
+    if(freespace == NULL){
+        kprintf("%d\n", (int)freespace);
+        panic("swap_bootstrap: Error allocating space\n");
+    }
+
     for(i=0;i<FREE_SIZE;i++){
         freespace[i] = 0;
     }
 
     hash_table=kmalloc(HASH_SIZE*sizeof(struct hash_entry*));
+    
+    if(hash_table == NULL){
+        panic("swap_bootstrap: Error allocating space\n");
+    }
 
     for(i=0; i<HASH_SIZE; i++) {
         hash_table[i]=kmalloc(sizeof(struct hash_entry));
         hash_table[i]->next=NULL;
     }
     //open the swapfile
-    result=vfs_open((char*)"SWAPFILE", 0, O_RDWR, &v);
+    // "/SWAPFILE" because kernel proc has no cwd
+    result=vfs_open((char *)"/SWAPFILE", O_RDWR | O_CREAT | O_TRUNC, 0, &v);
     if(result) {
         panic("Error opening SWAPFILE\n");
     }
