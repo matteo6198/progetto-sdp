@@ -76,6 +76,7 @@ int pt_get_page(vaddr_t v_addr){
         i = random() % CLUSTER_SIZE;
         if(PT_DIRTY(ptr[i])){
             // swap out physical page i
+            swap_out(PT_V_ADDR(ptr[i]), PT_PID(ptr[i]));    // TODO: check for vaddr correspondence with paddr
             // invalid tlb entry
             int j = tlb_probe(PT_V_ADDR(ptr[i]), 0);
             if(j >= 0){
@@ -93,15 +94,15 @@ int pt_get_page(vaddr_t v_addr){
 
     tlb_insert(v_addr, PT_P_ADDR((ptr-pagetable)+i+ start_cluster * CLUSTER_SIZE));     // la TLB deve essere settata prima di fare le operazioni di lettura
     
-    //if(!swap_in(v_addr, pid)){
+    if(!swap_in(v_addr, pid, SWAP_LOAD)){
         if(load_page(v_addr, exec)){
             // stop processo corrente 
             return ERR_CODE;
         }
-    //}
+    }
 
     if(!write){
-        uint32_t pos = tlb_probe(v_addr, PT_P_ADDR((ptr-pagetable)+i+ start_cluster * CLUSTER_SIZE));
+        uint32_t pos = tlb_probe(v_addr, 0);
         tlb_write(v_addr, PT_P_ADDR((ptr-pagetable)+i+ start_cluster * CLUSTER_SIZE) | TLBLO_VALID, pos);
     }
 
@@ -128,7 +129,7 @@ void pt_delete_PID(struct addrspace *as, pid_t pid){
         spinlock_release(&pt_lock);
         if(!found){
             // remove from swap if present
-
+            swap_in(addr, pid, SWAP_DISCARD);
         }
     }
     /* clean second segment */
@@ -146,7 +147,7 @@ void pt_delete_PID(struct addrspace *as, pid_t pid){
         spinlock_release(&pt_lock);
         if(!found){
             // remove from swap if present
-
+            swap_in(addr, pid, SWAP_DISCARD);
         }
     }
     /* clean stack */
@@ -164,7 +165,7 @@ void pt_delete_PID(struct addrspace *as, pid_t pid){
         spinlock_release(&pt_lock);
         if(!found){
             // remove from swap if present
-
+            swap_in(addr, pid, SWAP_DISCARD);
         }
     }
 

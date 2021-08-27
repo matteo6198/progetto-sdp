@@ -24,6 +24,7 @@
 #include <proc_syscalls.h>
 #include <vm_tlb.h>
 #include <vmstats.h>
+#include <swapfile.h>
 
 #define CLUSTER_SIZE 4
 
