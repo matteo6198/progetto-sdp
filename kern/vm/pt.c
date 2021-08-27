@@ -76,7 +76,7 @@ int pt_get_page(vaddr_t v_addr){
         i = random() % CLUSTER_SIZE;
         if(PT_DIRTY(ptr[i])){
             // swap out physical page i
-            swap_out(PT_V_ADDR(ptr[i]), PT_PID(ptr[i]));    // TODO: check for vaddr correspondence with paddr
+            swap_out(PT_V_ADDR(ptr[i]), PT_P_ADDR((ptr-pagetable)+i+ start_cluster * CLUSTER_SIZE), PT_PID(ptr[i]));    // TODO: check for vaddr correspondence with paddr
             // invalid tlb entry
             int j = tlb_probe(PT_V_ADDR(ptr[i]), 0);
             if(j >= 0){
@@ -178,7 +178,7 @@ void pt_getkpages(uint32_t n){
     for(i=0; i < (unsigned int) nClusters * CLUSTER_SIZE; i++){
         if(pagetable[i] != 0 && PT_DIRTY(pagetable[i])){
             // swap out
-            swap_out(PT_V_ADDR(pagetable[i]), PT_PID(pagetable[i]));
+            swap_out(PT_V_ADDR(pagetable[i]), PT_P_ADDR(i + start_cluster * CLUSTER_SIZE), PT_PID(pagetable[i]));
             // invalid tlb entry
             int j = tlb_probe(PT_V_ADDR(pagetable[i]), 0);
             if(j >= 0){
@@ -205,7 +205,7 @@ void pt_freekpages(uint32_t n_clusters){
     for(i=0; i < (unsigned int) nClusters * CLUSTER_SIZE; i++){
         if(pagetable[i] != 0 && PT_DIRTY(pagetable[i])){
             // swap out
-            swap_out(PT_V_ADDR(pagetable[i]), PT_PID(pagetable[i]));
+            swap_out(PT_V_ADDR(pagetable[i]), PT_P_ADDR(i + start_cluster * CLUSTER_SIZE), PT_PID(pagetable[i]));
             // invalid tlb entry
             int j = tlb_probe(PT_V_ADDR(pagetable[i]), 0);
             if(j >= 0){

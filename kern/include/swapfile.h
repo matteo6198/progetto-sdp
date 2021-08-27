@@ -2,6 +2,12 @@
 #define _SWAPFILE_H_
 
 #include <types.h>
+#include <lib.h>
+#include <uio.h>
+#include <vnode.h>
+#include <vm.h>
+#include <kern/fcntl.h>
+#include <vfs.h>
 
 #define SWAP_DISCARD    0
 #define SWAP_LOAD       1
@@ -37,23 +43,5 @@ int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store);
     (no return code)
 */
 void swap_out(vaddr_t v_addr, paddr_t p_addr, pid_t pid);
-
-/*  hash_swap
-    pid_t        pid: pid del processo
-    vaddr_t   v_addr: indirizzo logico della pagina da cercare 
-                      nell'hash table
-    Ritorna il valore hash associato ai valori in input per
-    la ricerca della pagina nello swap file
-*/
-
-int hash_swap(pid_t pid, vaddr_t vaddr);
-
-/*  swap_write
-    int       offset: è l'offset a cui scriviamo all'interno dello swapfile
-    vaddr_t    vaddr: indirizzo logico della pagina da scrivere nello swapfile
-    Ritorna il numero di byte scritti sullo swapfile
-*/
-
-int swap_write(int offset, vaddr_t vaddr);
 
 #endif /* _SWAPFILE_H_ */

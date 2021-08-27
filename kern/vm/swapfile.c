@@ -6,14 +6,14 @@ struct openfile {
     struct vnode *vn;
     off_t offset;
     unsigned int countref;
-}
+};
 
 struct hash_entry {
     pid_t pid;
     vaddr_t v_addr;
     int swap_offset;
     struct hash_entry* next;
-}
+};
 
 struct openfile swapfile;
 
@@ -24,21 +24,33 @@ char* freespace=NULL;
 
 uint8_t vett[8]={1, 2, 4, 8, 16, 32, 64, 128};
 
-//hash function that returns the row index of the hash table
-int hash_swap(vaddr_t v_addr, pid_t pid) 
+
+/*  hash_swap
+    pid_t        pid: pid del processo
+    vaddr_t   v_addr: indirizzo logico della pagina da cercare 
+                      nell'hash table
+    Ritorna il valore hash associato ai valori in input per
+    la ricerca della pagina nello swap file
+*/
+static int hash_swap(vaddr_t v_addr, pid_t pid) 
 {
     int res = (int) (v_addr >> 12);
     return (res * pid) % HASH_SIZE;
 }
 
-//new file_write function specifically used on the swapfile
-int swap_write(int offset, vaddr_t v_addr)
+
+/*  swap_write
+    int       offset: è l'offset a cui scriviamo all'interno dello swapfile
+    vaddr_t    vaddr: indirizzo logico della pagina da scrivere nello swapfile
+    Ritorna il numero di byte scritti sullo swapfile
+*/
+static int swap_write(int offset, vaddr_t v_addr)
 {
     struct iovec iov;
     struct uio u;
-    int res;
+    int result;
     
-    iov.iov_ubase=v_addr;
+    iov.iov_ubase= (userptr_t)v_addr;
     iov.iov_len=PAGE_SIZE;
 
     u.uio_iov=&iov;
@@ -49,7 +61,7 @@ int swap_write(int offset, vaddr_t v_addr)
     u.uio_rw=UIO_WRITE;
     u.uio_space=NULL;
     
-    result=VOP_WRITE(swapfile->vn, &u);
+    result=VOP_WRITE(swapfile.vn, &u);
     if(result) {
         return result;
     }
@@ -65,18 +77,21 @@ void swap_bootstrap(void)
     
     //allocate 288 entries for freespace (2308/sizeof(char), to have 2308 bit)
     //freespace[i]<<7==0-->the last block of the i-th page is free in the swapfile
-    freespace=kcalloc(FREE_SIZE, sizeof(char));
+    freespace=kmalloc(FREE_SIZE * sizeof(char));
+    for(i=0;i<FREE_SIZE;i++){
+        freespace[i] = 0;
+    }
 
     hash_table=kmalloc(HASH_SIZE*sizeof(struct hash_entry*));
 
     for(i=0; i<HASH_SIZE; i++) {
         hash_table[i]=kmalloc(sizeof(struct hash_entry));
-        hash_table[i].next=NULL;
+        hash_table[i]->next=NULL;
     }
     //open the swapfile
-    result=vfs_open("swapfile.txt", 0, rw, &v);
+    result=vfs_open((char*)"SWAPFILE", 0, O_RDWR, &v);
     if(result) {
-        panic("Error opening swapfile.txt\n");
+        panic("Error opening SWAPFILE\n");
     }
     
     //TODO
@@ -90,9 +105,9 @@ void swap_bootstrap(void)
 
 int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)
 {
-    struct iovec iov;
+    /*struct iovec iov;
     struct uio u;
-    int result, nwrite=0;
+    int result, nwrite=0;*/
     int hash_ret;
     struct hash_entry* node=NULL;
     int i; 
@@ -119,14 +134,11 @@ int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)
             
             break;
     }
-    
+    return 0;
 }
 
 void swap_out(vaddr_t v_addr, paddr_t p_addr, pid_t pid)
 {
-    struct iovec iov;
-    struct uio u;
-    int result, nwrite=0;
     int foundROW=-1;
     int foundCOLUMN=-1;
     int i, j;
@@ -158,12 +170,12 @@ void swap_out(vaddr_t v_addr, paddr_t p_addr, pid_t pid)
     }
 
     node->next=kmalloc(sizeof(struct hash_entry));
-    node->next.v_addr=v_addr;
-    node->next.pid=pid;
+    node->next->v_addr=v_addr;
+    node->next->pid=pid;
     //da debuggare
-    node->next.swap_offset=foundROW*8+foundCOLUMN;
+    node->next->swap_offset=foundROW*8+foundCOLUMN;
     
-    if(swap_write(node->next.swap_offset, PADDR_TO_KVADDR(p_addr))!=PAGE_SIZE) {
+    if(swap_write(node->next->swap_offset, PADDR_TO_KVADDR(p_addr))!=PAGE_SIZE) {
         panic("Error while writing on the swapfile.\n");
     }
 
