@@ -172,7 +172,7 @@ int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)
                 hash_table[hash_ret]=node->next;
                 flagJumpFor=1;
 
-                ( freespace[node->char_indx] ^ vett[node->bit_indx] ) = 0;
+                freespace[node->char_indx] ^ vett[node->bit_indx];
 
                 kfree(node);
 
@@ -183,7 +183,7 @@ int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)
                     node_temp=node->next;
                     node->next=node->next->next;
 
-                    ( freespace[node_temp->char_indx] ^ vett[node_temp->bit_indx] ) = 0;
+                    freespace[node_temp->char_indx] ^ vett[node_temp->bit_indx];
                     
                     kfree(node_temp);
 
@@ -210,7 +210,7 @@ int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)
                     
             //da inserire una funzione che libera il nodo (tipo kfree)
 
-            ( freespace[node_temp->char_indx] ^ vett[node_temp->bit_indx] ) = 0;
+            freespace[node_temp->char_indx] ^ vett[node_temp->bit_indx];
 
             kfree(node_temp);
             
