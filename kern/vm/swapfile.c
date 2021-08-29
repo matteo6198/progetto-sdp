@@ -13,6 +13,9 @@ struct hash_entry {
     vaddr_t v_addr;
     int swap_offset;
     struct hash_entry* next;
+    //these two are for indexing into the freespace vector
+    int char_indx;
+    int bit_indx;
 };
 
 struct openfile swapfile;
@@ -68,6 +71,35 @@ static int swap_write(int offset, vaddr_t v_addr)
     return PAGE_SIZE;
 }
 
+/*  swap_read
+    int       offset: è l'offset a cui scriviamo all'interno dello swapfile
+    vaddr_t    vaddr: indirizzo logico della pagina da scrivere nello swapfile
+    Ritorna il numero di byte letti dallo swapfile
+*/
+static int swap_read(int offset, vaddr_t v_addr)
+{
+    struct iovec iov;
+    struct uio u;
+    int result;
+    
+    iov.iov_ubase=(userptr_t)v_addr;
+    iov.iov_len=PAGE_SIZE;
+
+    u.uio_iov=&iov;
+    u.uio_iovcnt=1;
+    u.uio_resid=PAGE_SIZE;
+    u.uio_offset=offset;
+    u.uio_segflg=UIO_USERISPACE;
+    u.uio_rw=UIO_READ;
+    u.uio_space=proc_getas();
+    
+    result=VOP_READ(swapfile.vn, &u);
+    if(result) {
+        return result;
+    }
+    return PAGE_SIZE;
+}
+
 void swap_bootstrap(void)
 {
     
@@ -116,12 +148,11 @@ void swap_bootstrap(void)
 
 int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)
 {
-    /*struct iovec iov;
-    struct uio u;
-    int result, nwrite=0;*/
     int hash_ret;
     struct hash_entry* node=NULL;
-    int i; 
+    struct hash_entry* node_temp=NULL;
+    int i;
+    int flagJumpFor=0;
 
     hash_ret=hash_swap(pid, v_addr);
     node=hash_table[hash_ret];
@@ -134,14 +165,54 @@ int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)
             //in this case, delete the realtive node in the hash table and set as free
             //the bit relative to that page in the freespace structure
             //first, look for the page in the swapfile through the hash table
-            for(i=0; node->next!=NULL; node=node->next, i++) {
+            //two different cases: if the node we're looking for is the first, break asap
+            //else, go on and cycle through the others
+            
+            if(node->pid==pid && node->v_addr==v_addr) {
+                hash_table[hash_ret]=node->next;
+                flagJumpFor=1;
+
+                ( freespace[node->char_indx] ^ vett[node->bit_indx] ) = 0;
+
+                kfree(node);
+
+            }
+
+            for(; node->next!=NULL && flagJumpFor!=1; node=node->next) {
                 if(node->next->pid==pid && node->next->v_addr==v_addr) {
-                
+                    node_temp=node->next;
+                    node->next=node->next->next;
+
+                    ( freespace[node_temp->char_indx] ^ vett[node_temp->bit_indx] ) = 0;
+                    
+                    kfree(node_temp);
+
                 }
             }
             break;
 
         case SWAP_LOAD:
+            //prima faccio la scrittura in memoria,
+            //dopo libero il nodo dall'hash table e il relativo bit da freespace
+
+            for(; node->next!=NULL; node=node->next) {
+                if(node->next->pid==pid && node->next->v_addr==v_addr) {
+                    break;
+                }
+            }
+
+            if(swap_read(node->next.swap_offset, node->next.v_addr)!=PAGE_SIZE) {
+                panic("Error while reading on the swapfile.\n");
+            }
+            
+            node_temp=node->next;
+            node->next=node->next->next;
+                    
+            //da inserire una funzione che libera il nodo (tipo kfree)
+
+            ( freespace[node_temp->char_indx] ^ vett[node_temp->bit_indx] ) = 0;
+
+            kfree(node_temp);
             
             break;
     }
@@ -185,7 +256,9 @@ void swap_out(vaddr_t v_addr, paddr_t p_addr, pid_t pid)
     node->next->pid=pid;
     //da debuggare
     node->next->swap_offset=foundROW*8+foundCOLUMN;
-    
+    node->next->char_indx=foundROW;
+    node->next->bit_indx=foundCOLUMN;
+
     if(swap_write(node->next->swap_offset, PADDR_TO_KVADDR(p_addr))!=PAGE_SIZE) {
         panic("Error while writing on the swapfile.\n");
     }
