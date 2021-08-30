@@ -96,7 +96,9 @@ getppages(unsigned long npages)
 		unsigned long page, i;
 		if (active)
 		{
+			spinlock_release(&memSpinLock);
 			pt_getkpages(npages);
+			spinlock_acquire(&memSpinLock);
 			//kernPages += ((npages + CLUSTER_SIZE)/CLUSTER_SIZE) * CLUSTER_SIZE;
 			addr = getFreePages(npages);
 			page = addr / PAGE_SIZE;

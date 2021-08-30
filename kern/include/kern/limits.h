@@ -79,7 +79,7 @@
 /* Max value for a process ID (change this to match your implementation) */
 #include <opt-paging.h>
 #if OPT_PAGING
-#define __PID_MAX       2048
+#define __PID_MAX       128
 #else
 #define __PID_MAX       32767
 #endif
