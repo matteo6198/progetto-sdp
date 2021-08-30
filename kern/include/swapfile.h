@@ -8,6 +8,7 @@
 #include <vm.h>
 #include <kern/fcntl.h>
 #include <vfs.h>
+#include <proc.h>
 
 #define SWAP_DISCARD    0
 #define SWAP_LOAD       1

@@ -151,7 +151,6 @@ int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)
     int hash_ret;
     struct hash_entry* node=NULL;
     struct hash_entry* node_temp=NULL;
-    int i;
     int flagJumpFor=0;
 
     hash_ret=hash_swap(pid, v_addr);
@@ -172,7 +171,7 @@ int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)
                 hash_table[hash_ret]=node->next;
                 flagJumpFor=1;
 
-                freespace[node->char_indx] ^ vett[node->bit_indx];
+                freespace[node->char_indx] &= ~vett[node->bit_indx];
 
                 kfree(node);
 
@@ -183,7 +182,7 @@ int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)
                     node_temp=node->next;
                     node->next=node->next->next;
 
-                    freespace[node_temp->char_indx] ^ vett[node_temp->bit_indx];
+                    freespace[node_temp->char_indx] &= ~vett[node_temp->bit_indx];
                     
                     kfree(node_temp);
 
@@ -201,7 +200,7 @@ int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)
                 }
             }
 
-            if(swap_read(node->next.swap_offset, node->next.v_addr)!=PAGE_SIZE) {
+            if(swap_read(node->next->swap_offset, node->next->v_addr)!=PAGE_SIZE) {
                 panic("Error while reading on the swapfile.\n");
             }
             
@@ -210,7 +209,7 @@ int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)
                     
             //da inserire una funzione che libera il nodo (tipo kfree)
 
-            freespace[node_temp->char_indx] ^ vett[node_temp->bit_indx];
+            freespace[node_temp->char_indx] &= ~vett[node_temp->bit_indx];
 
             kfree(node_temp);
             
