@@ -298,9 +298,6 @@ proc_bootstrap(void)
 #if OPT_PROC_MANAGE
   int i;
   for(i=0;i<PID_MAX;i++){
-	  	if(i < PID_MIN)
-	  		processes[i] = (struct proc*)1;
-		else
     		processes[i]=NULL;
   }
 #endif
