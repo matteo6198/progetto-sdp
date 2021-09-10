@@ -9,6 +9,7 @@
 #include <kern/fcntl.h>
 #include <vfs.h>
 #include <proc.h>
+#include <vmstats.h>
 
 #define SWAP_DISCARD    0
 #define SWAP_LOAD       1

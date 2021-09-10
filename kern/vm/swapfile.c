@@ -126,6 +126,10 @@ int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)
     }
 
     hash_table[j]=-1;
+    if(store == SWAP_LOAD){
+        vms_update(VMS_FAULTS_SWAPFILE);
+        vms_update(VMS_FAULTS_DISK);
+    }
 
     return 1;
 }
@@ -159,5 +163,5 @@ void swap_out(vaddr_t v_addr, paddr_t p_addr, pid_t pid)
     {
         panic("Error while writing on the swapfile.\n");
     }
-
+    vms_update(VMS_SWAPFILE_WRITES);
 }
