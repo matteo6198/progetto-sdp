@@ -8,7 +8,7 @@ typedef uint32_t hash_entry;
 
 struct vnode *swapfile;
 
-struct hash_entry *hash_table = NULL;
+hash_entry *hash_table = NULL;
 
 
 
@@ -80,7 +80,6 @@ void swap_bootstrap(void)
 {
 
     int result;
-    int i;
 
     
     hash_table = kmalloc(HASH_SIZE*sizeof(hash_entry));
@@ -105,10 +104,7 @@ void swap_bootstrap(void)
 
 int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)
 {
-    uint32_t res;
     int hash_ret;
-    struct hash_entry *node = NULL;
-    struct hash_entry *node_temp = NULL;
     int i, j;
 
     hash_ret = hash_swap(v_addr, pid);
@@ -129,7 +125,7 @@ int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)
         panic("Error while reading on the swapfile.\n");
     }
 
-    hash_entry[j]=-1;
+    hash_table[j]=-1;
 
     return 1;
 }
@@ -146,7 +142,7 @@ void swap_out(vaddr_t v_addr, paddr_t p_addr, pid_t pid)
     hash_ret = hash_swap(v_addr, pid);
 
     for(i=0, j=hash_ret; i<HASH_SIZE; i++, j=(hash_ret+i)%HASH_SIZE) {
-        if(hash_table[j]==0 || hash_table[j]==-1) {
+        if(hash_table[j]==0 || hash_table[j]==(uint32_t)-1) {
             break;
         }
     }
