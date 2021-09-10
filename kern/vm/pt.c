@@ -219,15 +219,9 @@ void pt_getkpages(uint32_t n)
         if (pagetable[i] != 0 && PT_DIRTY(pagetable[i]))
         {
             // swap out
-            spinlock_release(&pt_lock);
+            //spinlock_release(&pt_lock);
             swap_out(PT_V_ADDR(pagetable[i]), PT_P_ADDR(i + start_cluster * CLUSTER_SIZE), PT_PID(pagetable[i]));
-            spinlock_acquire(&pt_lock);
-            // invalid tlb entry
-            int j = tlb_probe(PT_V_ADDR(pagetable[i]), 0);
-            if (j >= 0)
-            {
-                tlb_write(TLBHI_INVALID(j), TLBLO_INVALID(), j);
-            }
+            //spinlock_acquire(&pt_lock);
         }
         pagetable[i] = 0;
     }
@@ -252,13 +246,9 @@ void pt_freekpages(uint32_t n_clusters)
         if (pagetable[i] != 0 && PT_DIRTY(pagetable[i]))
         {
             // swap out
+            //spinlock_release(&pt_lock);
             swap_out(PT_V_ADDR(pagetable[i]), PT_P_ADDR(i + start_cluster * CLUSTER_SIZE), PT_PID(pagetable[i]));
-            // invalid tlb entry
-            int j = tlb_probe(PT_V_ADDR(pagetable[i]), 0);
-            if (j >= 0)
-            {
-                tlb_write(TLBHI_INVALID(j), TLBLO_INVALID(), j);
-            }
+            //spinlock_acquire(&pt_lock);
         }
         pagetable[i] = 0;
     }
