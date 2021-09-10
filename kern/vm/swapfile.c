@@ -1,27 +1,16 @@
 #include <swapfile.h>
-#define HASH_SIZE 101
-#define FREE_SIZE (SWAP_FILESIZE / PAGE_SIZE / 8)
+#define HASH_SIZE (SWAP_FILESIZE/PAGE_SIZE)
 
-#define HASH_ROW_INDEX(entry) ((entry->swap_offset / PAGE_SIZE) / 8)
-#define HASH_COL_INDEX(entry) ((entry->swap_offset / PAGE_SIZE) % 8)
+#define SWAP_ENTRYPID(entry) ((int)(entry & 0x7FF))
+#define SWAP_ENTRYVADDR(entry) (entry & PAGE_FRAME)
 
-#define SWAP_ENTRYPID(entry) ((int)(entry->v_addr & 0x7FF))
-#define SWAP_ENTRYVADDR(entry) (entry->v_addr & PAGE_FRAME)
-
-struct hash_entry
-{
-    vaddr_t v_addr;
-    //    pid_t pid;
-    uint32_t swap_offset;
-    struct hash_entry *next;
-};
+typedef uint32_t hash_entry;
 
 struct vnode *swapfile;
 
-struct hash_entry **hash_table = NULL;
+struct hash_entry *hash_table = NULL;
 
-//create a bitmap as a char array to track the free space
-char *freespace = NULL;
+
 
 /*  hash_swap
     pid_t        pid: pid del processo
@@ -93,37 +82,15 @@ void swap_bootstrap(void)
     int result;
     int i;
 
-    //allocate 288 entries for freespace, each entry has 8 bit,
-    /*
-    n = 56
-    i = 56 / 8
-    j = 56 % 8
-    isAllocated = freespace[i] & (1 << j)
-    */
-    //freespace[i]<<7==0-->the last block of the i-th page is free in the swapfile
-    freespace = kmalloc(FREE_SIZE);
-
-    if (freespace == NULL)
-    {
-        panic("swap_bootstrap: Error allocating freespace bitmap\n");
-    }
-
-    for (i = 0; i < FREE_SIZE; i++)
-    {
-        freespace[i] = 0;
-    }
-
-    hash_table = kmalloc(HASH_SIZE * sizeof(struct hash_entry *));
+    
+    hash_table = kmalloc(HASH_SIZE*sizeof(hash_entry));
 
     if (hash_table == NULL)
     {
         panic("swap_bootstrap: Error allocating hash table\n");
     }
 
-    for (i = 0; i < HASH_SIZE; i++)
-    {
-        hash_table[i] = NULL;
-    }
+    
     //open the swapfile
     // "/SWAPFILE" because kernel proc has no cwd
     result = vfs_open((char *)"/SWAPFILE", O_RDWR | O_CREAT | O_TRUNC, 0, &swapfile);
@@ -138,116 +105,63 @@ void swap_bootstrap(void)
 
 int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)
 {
+    uint32_t res;
     int hash_ret;
     struct hash_entry *node = NULL;
     struct hash_entry *node_temp = NULL;
+    int i, j;
 
     hash_ret = hash_swap(v_addr, pid);
-    node = hash_table[hash_ret];
-
-    if (node == NULL)
-    {
-        return 0;
-    }
-
-    if (SWAP_ENTRYPID(node) == pid && SWAP_ENTRYVADDR(node) == v_addr)
-    {
-        hash_table[hash_ret] = node->next;
-        node_temp = node;
-    }
-    else
-    {
-        for (; (SWAP_ENTRYPID(node->next) != pid || SWAP_ENTRYVADDR(node->next) != v_addr) || node->next != NULL; node = node->next)
-            ;
-
-        if (node->next != NULL)
-        {
-            node_temp = node->next;
-            node->next = node_temp->next;
+    
+    for(i=0, j=hash_ret; i<HASH_SIZE; i++, j=(hash_ret+i)%HASH_SIZE) {
+        if(SWAP_ENTRYVADDR(hash_table[j])==v_addr && SWAP_ENTRYPID(hash_table[j])==pid) {
+            break;
         }
-        else
-        {
+
+        else if(hash_table[j]==0) {
             return 0;
         }
     }
 
-    if (store == SWAP_LOAD && swap_read(node_temp->swap_offset, SWAP_ENTRYVADDR(node_temp)) != 0)
+    //offset=j*PAGE_SIZE
+    if (store == SWAP_LOAD && swap_read(j*PAGE_SIZE, SWAP_ENTRYVADDR(hash_table[j])) != 0)
     {
         panic("Error while reading on the swapfile.\n");
     }
 
-    freespace[HASH_ROW_INDEX(node_temp)] &= ~(1 << HASH_COL_INDEX(node_temp));
-    kfree(node_temp);
+    hash_entry[j]=-1;
 
     return 1;
 }
 
 void swap_out(vaddr_t v_addr, paddr_t p_addr, pid_t pid)
 {
-    int foundROW = -1;
-    int foundCOLUMN = -1;
     int i, j;
     int hash_ret = -1;
-    struct hash_entry *node = NULL;
-
+    
     v_addr &= PAGE_FRAME;
     v_addr |= pid;
 
-    for (i = 0; i < FREE_SIZE && foundROW == -1; i++)
-    {
-        if (freespace[i] == (char)0xFF)
-            continue;
-        for (j = 0; j < 8; j++)
-        {
-            if ((freespace[i] & (1 << j)) == 0)
-            {
-                foundROW = i;
-                foundCOLUMN = j;
-                //set at 1 freespace[i] at the j-th bit
-                freespace[i] |= (1 << j);
-                break;
-            }
+
+    hash_ret = hash_swap(v_addr, pid);
+
+    for(i=0, j=hash_ret; i<HASH_SIZE; i++, j=(hash_ret+i)%HASH_SIZE) {
+        if(hash_table[j]==0 || hash_table[j]==-1) {
+            break;
         }
     }
 
-    if (foundROW == -1 && foundCOLUMN == -1)
+    
+    if (i==HASH_SIZE)
     {
         panic("Out of swap space");
     }
 
-    hash_ret = hash_swap(v_addr, pid);
-    node = hash_table[hash_ret];
+    hash_table[j]=v_addr;
 
-    if (node == NULL)
-    {
-        node = kmalloc(sizeof(struct hash_entry));
-        if (node == NULL)
-        {
-            panic("swap_bootstrap: Error allocating hash table entry\n");
-        }
-    }
-    else
-    {
-        while (node->next != NULL)
-        {
-            node = node->next;
-        }
-
-        node->next = kmalloc(sizeof(struct hash_entry));
-        if (node->next == NULL)
-        {
-            panic("swap_bootstrap: Error allocating hash table entry\n");
-        }
-        node = node->next;
-    }
-
-    node->next = NULL;
-    node->v_addr = v_addr;
-    //da debuggare
-    node->swap_offset = (foundROW * 8 + foundCOLUMN) * PAGE_SIZE;
-
-    if (swap_write(node->swap_offset, PADDR_TO_KVADDR(p_addr)))
+    if (swap_write(j*PAGE_SIZE, PADDR_TO_KVADDR(p_addr)))
     {
         panic("Error while writing on the swapfile.\n");
     }
+
 }
