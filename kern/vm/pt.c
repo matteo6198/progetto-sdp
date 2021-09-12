@@ -209,39 +209,30 @@ void pt_delete_PID(struct addrspace *as, pid_t pid)
     }
 }
 
-paddr_t pt_getkpages(uint32_t n, struct spinlock* memLock)
+void pt_getkpages(uint32_t n)
 {
     unsigned int i;
-    paddr_t paddr;
     n = (n + CLUSTER_SIZE) / CLUSTER_SIZE;
     spinlock_acquire(&pt_lock);
-    start_cluster += n;
-    nClusters -= n;
-    if(nClusters < 0){
-        panic("Out of memory.");
-    }
-
-    for (i = (start_cluster - n) * CLUSTER_SIZE; i < (unsigned int)start_cluster * CLUSTER_SIZE; i++)
-        free_ppage(i * PAGE_SIZE);
-    paddr = getFreePages(n);
-    spinlock_release(memLock);
-    
     for (i = 0; i < (unsigned int)nClusters * CLUSTER_SIZE; i++)
     {
         if (pagetable[i] != 0 && PT_DIRTY(pagetable[i]))
         {
             // swap out
-            pt_entry entry = pagetable[i];
-            spinlock_release(&pt_lock);
-            swap_out(PT_V_ADDR(entry), PT_P_ADDR(i + start_cluster * CLUSTER_SIZE), PT_PID(entry));
-            spinlock_acquire(&pt_lock);
+            //spinlock_release(&pt_lock);
+            swap_out(PT_V_ADDR(pagetable[i]), PT_P_ADDR(i + start_cluster * CLUSTER_SIZE), PT_PID(pagetable[i]));
+            //spinlock_acquire(&pt_lock);
         }
         pagetable[i] = 0;
     }
+    start_cluster += n;
+    nClusters -= n;
+
+    for (i = (start_cluster - n) * CLUSTER_SIZE; i < (unsigned int)start_cluster * CLUSTER_SIZE; i++)
+        free_ppage(i * PAGE_SIZE);
 
     tlb_invalidate();
     spinlock_release(&pt_lock);
-    return paddr;
 }
 
 void pt_freekpages(uint32_t n_clusters)

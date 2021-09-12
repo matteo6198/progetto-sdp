@@ -91,22 +91,27 @@ getppages(unsigned long npages)
 #if OPT_VM_MANAGE
 	spinlock_acquire(&memSpinLock);
 	addr = getFreePages(npages);
-	spinlock_release(&memSpinLock);
 	if (addr == 0)
 	{
+		unsigned long page, i;
 		if (active)
 		{
-			spinlock_acquire(&memSpinLock);
-			addr = pt_getkpages(npages, &memSpinLock);
-			//addr = getFreePages(npages);
-			//spinlock_release(&memSpinLock);
+			pt_getkpages(npages);
+			//kernPages += ((npages + CLUSTER_SIZE)/CLUSTER_SIZE) * CLUSTER_SIZE;
+			addr = getFreePages(npages);
+			page = addr / PAGE_SIZE;
+			for (i = page; i < page + npages; i++)
+			{
+				pageSetUsed(i);
+			}
+			allocated_size[page] = npages;
 		}else{
 			spinlock_acquire(&stealmem_lock);
 			addr = ram_stealmem(npages);
 			spinlock_release(&stealmem_lock);
 		}
 	}
-	//spinlock_release(&memSpinLock);
+	spinlock_release(&memSpinLock);
 	return addr;
 
 #else

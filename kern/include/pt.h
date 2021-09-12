@@ -46,7 +46,7 @@ int pt_get_page(vaddr_t v_addr);
 void pt_delete_PID(struct addrspace *as, pid_t pid);
 
 /* allocate clusters for kernel pages*/
-paddr_t pt_getkpages(uint32_t n, struct spinlock* memLock);
+void pt_getkpages(uint32_t n);
 
 /* free allocated kernel clusters */
 void pt_freekpages(uint32_t n_clusters);
