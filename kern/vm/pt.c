@@ -228,6 +228,10 @@ void pt_getkpages(uint32_t n)
     start_cluster += n;
     nClusters -= n;
 
+    if(nClusters < 0){
+        panic("Out of memory.\n");
+    }
+
     for (i = (start_cluster - n) * CLUSTER_SIZE; i < (unsigned int)start_cluster * CLUSTER_SIZE; i++)
         free_ppage(i * PAGE_SIZE);
 
