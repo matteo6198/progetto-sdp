@@ -225,9 +225,11 @@ paddr_t pt_getkpages(uint32_t n, struct spinlock* memLock)
     nClusters -= n;
 
     tlb_invalidate();
-    for (i = (tmp_start_cluster) * CLUSTER_SIZE; i < (unsigned int)(tmp_start_cluster + n) * CLUSTER_SIZE; i++)
+    for (i = (tmp_start_cluster) * CLUSTER_SIZE; i < (unsigned int)(tmp_start_cluster + n) * CLUSTER_SIZE; i++){
         free_ppage(i * PAGE_SIZE);
+    }
     paddr = getFreePages(n);
+    //KASSERT(paddr != 0);
     spinlock_release(memLock);
     
     for (i = 0; i < (unsigned int)tmp_nClusters * CLUSTER_SIZE; i++)

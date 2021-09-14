@@ -95,16 +95,17 @@ getppages(unsigned long npages)
 	{
 		if (active)
 		{
-			unsigned long page, i;
+			//unsigned long page, i;
 			//spinlock_acquire(&memSpinLock);
 			addr = pt_getkpages(npages, &memSpinLock);
+			return addr;/*
 			spinlock_acquire(&memSpinLock);
 	        page = addr / PAGE_SIZE;
 	        for (i = page; i < page + npages; i++)
 	        {
 	                pageSetUsed(i);
 	        }
-	        allocated_size[page] = npages;	
+	        allocated_size[page] = npages;*/	
 		}else{
 			spinlock_acquire(&stealmem_lock);
 			addr = ram_stealmem(npages);
