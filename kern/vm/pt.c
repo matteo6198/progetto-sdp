@@ -215,31 +215,32 @@ paddr_t pt_getkpages(uint32_t n, struct spinlock* memLock)
     paddr_t paddr;
     n = (n + CLUSTER_SIZE) / CLUSTER_SIZE;
     spinlock_acquire(&pt_lock);
-    start_cluster += n;
-    nClusters -= n;
-    if(nClusters < 0){
+    if(nClusters - (int)n < 0){
         panic("Out of memory.");
     }
 
-    for (i = (start_cluster - n) * CLUSTER_SIZE; i < (unsigned int)start_cluster * CLUSTER_SIZE; i++)
+    tlb_invalidate();
+    for (i = (start_cluster) * CLUSTER_SIZE; i < (unsigned int)(start_cluster + n) * CLUSTER_SIZE; i++)
         free_ppage(i * PAGE_SIZE);
     paddr = getFreePages(n);
     spinlock_release(memLock);
     
     for (i = 0; i < (unsigned int)nClusters * CLUSTER_SIZE; i++)
     {
-        if (pagetable[i] != 0 && PT_DIRTY(pagetable[i]))
+        pt_entry entry = pagetable[i];
+        pagetable[i] = 0;
+        if (entry != 0 && PT_DIRTY(entry))
         {
             // swap out
-            pt_entry entry = pagetable[i];
             spinlock_release(&pt_lock);
             swap_out(PT_V_ADDR(entry), PT_P_ADDR(i + start_cluster * CLUSTER_SIZE), PT_PID(entry));
             spinlock_acquire(&pt_lock);
         }
-        pagetable[i] = 0;
     }
 
-    tlb_invalidate();
+    start_cluster += n;
+    nClusters -= n;
+
     spinlock_release(&pt_lock);
     return paddr;
 }
