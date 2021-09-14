@@ -88,35 +88,32 @@ static paddr_t
 getppages(unsigned long npages)
 {
 	paddr_t addr;
-#if OPT_VM_MANAGE
 	spinlock_acquire(&memSpinLock);
 	addr = getFreePages(npages);
-	spinlock_release(&memSpinLock);
+	//spinlock_release(&memSpinLock);
 	if (addr == 0)
 	{
 		if (active)
 		{
-			spinlock_acquire(&memSpinLock);
+			unsigned long page, i;
+			//spinlock_acquire(&memSpinLock);
 			addr = pt_getkpages(npages, &memSpinLock);
-			//addr = getFreePages(npages);
-			//spinlock_release(&memSpinLock);
+			spinlock_acquire(&memSpinLock);
+	        page = addr / PAGE_SIZE;
+	        for (i = page; i < page + npages; i++)
+	        {
+	                pageSetUsed(i);
+	        }
+	        allocated_size[page] = npages;	
 		}else{
 			spinlock_acquire(&stealmem_lock);
 			addr = ram_stealmem(npages);
 			spinlock_release(&stealmem_lock);
 		}
 	}
-	//spinlock_release(&memSpinLock);
+	spinlock_release(&memSpinLock);
 	return addr;
 
-#else
-	spinlock_acquire(&stealmem_lock);
-
-	addr = ram_stealmem(npages);
-
-	spinlock_release(&stealmem_lock);
-#endif
-	return addr;
 }
 
 /*
@@ -225,7 +222,7 @@ static void return_mem(void){
 		i--;
 		cnt++;
 	}
-	if(cnt / CLUSTER_SIZE > 2){
+	if(cnt / CLUSTER_SIZE >= 2){
 		cnt /= CLUSTER_SIZE;
 		for(i=cnt*CLUSTER_SIZE; i> 0; i--){
 			kernPages--;
