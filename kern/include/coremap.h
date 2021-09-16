@@ -21,7 +21,7 @@
 #include <opt-ondemand_manage.h>
 #include <opt-vm_manage.h>
 
-paddr_t getFreePages(unsigned long n);
+paddr_t getFreePages(unsigned int n);
 void free_ppage(paddr_t paddr);
-void pageSetUsed(unsigned long i);
+void pageSetUsed(unsigned int i);
 #endif /* _COREMAP_H_ */

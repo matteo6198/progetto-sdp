@@ -209,21 +209,50 @@ void pt_delete_PID(struct addrspace *as, pid_t pid)
     }
 }
 
-void pt_getkpages(uint32_t n)
+paddr_t pt_getkpages(uint32_t n_pages)
 {
-    unsigned int i;
-    n = (n + CLUSTER_SIZE) / CLUSTER_SIZE;
+    unsigned int i, tmp_start_cluster, tmp_nClusters;
+    paddr_t paddr;
+    unsigned int n_cluster_to_allocate = (n_pages + CLUSTER_SIZE) / CLUSTER_SIZE;
     spinlock_acquire(&pt_lock);
-    for (i = 0; i < (unsigned int)nClusters * CLUSTER_SIZE; i++)
+
+    paddr = getFreePages(n_pages);
+
+    if(paddr != 0){
+        spinlock_release(&pt_lock);
+        return paddr;
+    }
+
+    if(nClusters - (int)n_cluster_to_allocate < 0){
+        n_cluster_to_allocate = nClusters;
+    }
+    tmp_start_cluster = start_cluster;
+    tmp_nClusters = nClusters;
+
+    start_cluster += n_cluster_to_allocate;
+    nClusters -= n_cluster_to_allocate;
+
+    tlb_invalidate();
+    for (i = (tmp_start_cluster) * CLUSTER_SIZE; i < (unsigned int)(tmp_start_cluster + n_cluster_to_allocate) * CLUSTER_SIZE; i++){
+        free_ppage(i * PAGE_SIZE);
+    }
+    paddr = getFreePages(n_pages);
+    if(paddr == 0){
+        spinlock_release(&pt_lock);
+        panic("Out of memory!\n");
+    }
+    
+    for (i = 0; i < (unsigned int)tmp_nClusters * CLUSTER_SIZE; i++)
     {
-        if (pagetable[i] != 0 && PT_DIRTY(pagetable[i]))
+        pt_entry entry = pagetable[i];
+        pagetable[i] = 0;
+        if (entry != 0 && PT_DIRTY(entry))
         {
             // swap out
-            //spinlock_release(&pt_lock);
-            swap_out(PT_V_ADDR(pagetable[i]), PT_P_ADDR(i + start_cluster * CLUSTER_SIZE), PT_PID(pagetable[i]));
-            //spinlock_acquire(&pt_lock);
+            spinlock_release(&pt_lock);
+            swap_out(PT_V_ADDR(entry), PT_P_ADDR(i + tmp_start_cluster * CLUSTER_SIZE), PT_PID(entry));
+            spinlock_acquire(&pt_lock);
         }
-        pagetable[i] = 0;
     }
     start_cluster += n;
     nClusters -= n;
@@ -235,7 +264,6 @@ void pt_getkpages(uint32_t n)
     for (i = (start_cluster - n) * CLUSTER_SIZE; i < (unsigned int)start_cluster * CLUSTER_SIZE; i++)
         free_ppage(i * PAGE_SIZE);
 
-    tlb_invalidate();
     spinlock_release(&pt_lock);
 }
 
