@@ -10,30 +10,18 @@ static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 
 static void pageSetFree(unsigned int i)
 {
-#if BITMAP
 	/* setting the bit to 1 means page free */
 	allocated_pages[i / 8] |= (1 << (i % 8));
-#else
-	allocated_pages[i] = PAGE_FREE;
-#endif
 }
 void pageSetUsed(unsigned int i)
 {
-#if BITMAP
 	/* clearing the bit means page used */
 	allocated_pages[i / 8] &= ~(1 << (i % 8));
-#else
-	allocated_pages[i] = PAGE_USED;
-#endif
 }
 static int isPageFree(unsigned int i)
 {
-#if BITMAP
 	/* check if the bit is 1 */
 	return allocated_pages[i / 8] & (1 << (i % 8));
-#else
-	return allocated_pages[i] == PAGE_FREE;
-#endif
 }
 
 paddr_t getFreePages(unsigned int n)
@@ -124,7 +112,6 @@ vm_can_sleep(void)
 
 void vm_bootstrap(void)
 {
-#if OPT_VM_MANAGE
 	unsigned long i;
 
 	spinlock_acquire(&memSpinLock);
@@ -137,11 +124,7 @@ void vm_bootstrap(void)
 	spinlock_release(&memSpinLock);
 	nRamFrames = (ram_getsize() / PAGE_SIZE);
 
-#if BITMAP
 	allocated_pages = kmalloc(nRamFrames / 8 * sizeof(char));
-#else
-	allocated_pages = kmalloc(nRamFrames * sizeof(char));
-#endif /* BITMAP */
 
 	allocated_size = kmalloc(nRamFrames * sizeof(unsigned int));
 	if (allocated_pages == NULL || allocated_size == NULL)
@@ -150,7 +133,7 @@ void vm_bootstrap(void)
 		return;
 	}
 	spinlock_acquire(&memSpinLock);
-#if ALLOC_ALL_AT_BOOT
+
 	paddr_t start = ram_stealmem(1); /* get first free address */
 	unsigned long nRemPages = nRamFrames - start / PAGE_SIZE - 1;
 	ram_stealmem(nRemPages);
@@ -165,25 +148,11 @@ void vm_bootstrap(void)
 		pageSetFree(i);
 		allocated_size[i] = 0;
 	}
-#else
-	for (i = 0; i < nRamFrames; i++)
-	{
-#if BITMAP
-		pageSetUsed(i);
-#else
-		allocated_pages[i] = (char)PAGE_NOT_ALLOCATED;
-#endif /* BITMAP */
-		allocated_size[i] = 0;
-	}
-#endif /* ALLOCATE_ALL_AT_BOOT */
 	active = 1;
 	kernPages = ((start / PAGE_SIZE + CLUSTER_SIZE) / CLUSTER_SIZE) * CLUSTER_SIZE;
 	spinlock_release(&memSpinLock);
 	kprintf("virtual memory boot completed...\n");
-#endif /* OPT_VM_MANAGE */
-#if OPT_ONDEMAND_MANAGE
     pt_bootstrap(start / PAGE_SIZE);
-#endif
 }
 
 /* Allocate/free some kernel-space virtual pages */
@@ -254,7 +223,6 @@ void vm_tlbshootdown(const struct tlbshootdown *ts)
 
 void memstats(void)
 {
-#if OPT_VM_MANAGE
 	unsigned long free_pages, i, free_mem, used_mem;
 	spinlock_acquire(&memSpinLock);
 	if (!active)
@@ -283,9 +251,6 @@ void memstats(void)
 	used_mem = nRamFrames * PAGE_SIZE - free_mem;
 	kprintf("Free memory:\t%lu kB\nUsed memory:\t%lu kB\n", free_mem / 1024, used_mem / 1024);
 	kprintf("Kernel memory:\t%u kB\n", kernPages * PAGE_SIZE / 1024);
-#else
-	kprintf("Virtual memory is not managed\n");
-#endif
 }
 
 void free_ppage(paddr_t paddr){
