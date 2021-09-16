@@ -81,25 +81,12 @@ void swap_bootstrap(void)
 
     int result;
 
-    
-    /*hash_table = kmalloc(HASH_SIZE*sizeof(hash_entry));
-
-    if (hash_table == NULL)
-    {
-        panic("swap_bootstrap: Error allocating hash table\n");
-    }
-
-    */
     //open the swapfile
-    // "/SWAPFILE" because kernel proc has no cwd
-    result = vfs_open((char *)"/SWAPFILE", O_RDWR | O_CREAT | O_TRUNC, 0, &swapfile);
+    result = vfs_open((char *)"SWAPFILE", O_RDWR | O_CREAT | O_TRUNC, 0, &swapfile);
     if (result)
     {
         panic("Error opening SWAPFILE\n");
     }
-
-    //TODO
-    /*of->lock=lock_create("file lock");*/
 }
 
 int swap_in(vaddr_t v_addr, pid_t pid, uint8_t store)

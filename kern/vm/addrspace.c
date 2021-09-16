@@ -35,8 +35,6 @@
 #include <addrspace.h>
 #include <vm.h>
 #include <vm_tlb.h>
-#include <opt-ondemand_manage.h>
-#include <opt-tlb_manage.h>
 #include <vmstats.h>
 
 static void
@@ -65,7 +63,7 @@ as_create(void)
 	as->as_npages1 = 0;
 	as->as_vbase2 = 0;
 	as->as_npages2 = 0;
-#if OPT_ONDEMAND_MANAGE
+#if OPT_PAGING
 	as->as_offset1 = 0;
 	as->as_filesize1 = 0;
 	as->as_offset2 = 0;
@@ -82,7 +80,7 @@ as_create(void)
 void as_destroy(struct addrspace *as)
 {
 	vm_can_sleep();
-#if !OPT_ONDEMAND_MANAGE
+#if !OPT_PAGING
 	free_kpages(PADDR_TO_KVADDR(as->as_pbase1));
 	free_kpages(PADDR_TO_KVADDR(as->as_pbase2));
 	free_kpages(PADDR_TO_KVADDR(as->as_stackpbase));
@@ -120,7 +118,7 @@ void as_deactivate(void)
 	/* nothing */
 }
 
-#if OPT_ONDEMAND_MANAGE
+#if OPT_PAGING
 int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 					 int readable, int writeable, int executable,
 					 off_t offset, size_t filesize)
@@ -220,7 +218,7 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 	return ENOSYS;
 }
 #endif
-# if !OPT_ONDEMAND_MANAGE
+# if !OPT_PAGING
 static void
 as_zero_region(paddr_t paddr, unsigned npages)
 {
@@ -228,7 +226,7 @@ as_zero_region(paddr_t paddr, unsigned npages)
 }
 #endif
 
-#if !OPT_ONDEMAND_MANAGE
+#if !OPT_PAGING
 int as_prepare_load(struct addrspace *as)
 {
 	KASSERT(as->as_pbase1 == 0);
@@ -273,7 +271,7 @@ int as_complete_load(struct addrspace *as)
 int as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 {
 	(void)as;
-#if !OPT_ONDEMAND_MANAGE
+#if !OPT_PAGING
 	KASSERT(as->as_stackpbase != 0);
 #endif
 	*stackptr = USERSTACK;
@@ -297,7 +295,7 @@ int as_copy(struct addrspace *old, struct addrspace **ret)
 	new->as_vbase2 = old->as_vbase2;
 	new->as_npages2 = old->as_npages2;
 
-#if OPT_ONDEMAND_MANAGE
+#if OPT_PAGING
 	new->as_offset2 = old->as_offset2;
 	new->as_filesize2 = old->as_filesize2;
 	new->as_elfbase2 = old->as_elfbase2;
@@ -307,7 +305,7 @@ int as_copy(struct addrspace *old, struct addrspace **ret)
 	new->as_flags = old->as_flags;
 #endif
 
-#if !OPT_ONDEMAND_MANAGE
+#if !OPT_PAGING
 	/* (Mis)use as_prepare_load to allocate some physical memory. */
 	if (as_prepare_load(new))
 	{
@@ -336,7 +334,7 @@ int as_copy(struct addrspace *old, struct addrspace **ret)
 	return 0;
 }
 
-#if OPT_TLB_MANAGE
+#if OPT_PAGING
 int vm_fault(int faulttype, vaddr_t faultaddress)
 {
 	int status;
@@ -344,7 +342,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
 
 	faultaddress &= PAGE_FRAME;
 
-	//DEBUG(DB_VM, "tlb_manage[%d]: fault: 0x%x\n",faulttype, faultaddress);
+	DEBUG(DB_VM, "tlb_manage[%d]: fault: 0x%x\n",faulttype, faultaddress);
 
 	switch (faulttype)
 	{

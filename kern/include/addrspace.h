@@ -37,7 +37,7 @@
 
 #include <vm.h>
 #include "opt-dumbvm.h"
-#include "opt-ondemand_manage.h"
+#include "opt-paging.h"
 
 struct vnode;
 
@@ -51,7 +51,7 @@ struct vnode;
 
 struct addrspace {
 
-#if OPT_ONDEMAND_MANAGE        
+#if OPT_PAGING        
         vaddr_t as_vbase1;
         paddr_t as_elfbase1;
         size_t as_npages1;
@@ -123,7 +123,7 @@ void              as_activate(void);
 void              as_deactivate(void);
 void              as_destroy(struct addrspace *);
 
-#if OPT_ONDEMAND_MANAGE
+#if OPT_PAGING
 int               as_define_region(struct addrspace *as,
                                    vaddr_t vaddr, size_t sz,
                                    int readable,

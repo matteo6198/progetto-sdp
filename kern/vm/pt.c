@@ -3,17 +3,15 @@
 pt_entry *pagetable;
 static int nClusters = 0;
 static int start_cluster = 0;
-//static int hash_mask = 0;
 struct spinlock pt_lock = SPINLOCK_INITIALIZER;
 
 /* bootstrap for the page table */
 void pt_bootstrap(int first_free)
 {
+    int cnt = 1;
     first_free = (first_free + CLUSTER_SIZE) / CLUSTER_SIZE;
     nClusters = ((ram_getsize() / PAGE_SIZE) - (first_free * CLUSTER_SIZE)) / CLUSTER_SIZE;
     start_cluster = first_free;
-    // build mask
-    int cnt = 1;
     // allocating page table
     pagetable = kmalloc(nClusters * CLUSTER_SIZE * sizeof(pt_entry));
     if (pagetable == NULL)
@@ -95,7 +93,7 @@ int pt_get_page(vaddr_t v_addr)
             // swap out physical page i
             spinlock_release(&pt_lock);
             //inside swap_out we acqurie another spinlock
-            swap_out(PT_V_ADDR(ptr[i]), PT_P_ADDR((ptr - pagetable) + i + start_cluster * CLUSTER_SIZE), PT_PID(ptr[i])); // TODO: check for vaddr correspondence with paddr
+            swap_out(PT_V_ADDR(ptr[i]), PT_P_ADDR((ptr - pagetable) + i + start_cluster * CLUSTER_SIZE), PT_PID(ptr[i])); 
             spinlock_acquire(&pt_lock);
         }
         // invalid tlb entry

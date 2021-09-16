@@ -37,7 +37,7 @@ void tlb_insert(vaddr_t vaddr, paddr_t paddr){
 
 	ehi = vaddr;
 	elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
-	//DEBUG(DB_VM, "tlb_manage: 0x%x -> 0x%x\n", vaddr, paddr);
+	DEBUG(DB_VM, "tlb_manage: 0x%x -> 0x%x\n", vaddr, paddr);
 	tlb_write(ehi, elo, i);
 	splx(spl);
 	return;

@@ -7,7 +7,7 @@
 // Errors
 #define ERR_CODE ((paddr_t) -1)
 
-#include "opt-ondemand_manage.h"
+#include "opt-paging.h"
 
 #include <types.h>
 #include <kern/errno.h>

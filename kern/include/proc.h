@@ -39,7 +39,7 @@
 #include <spinlock.h>
 #include <opt-read_write.h>
 #include <opt-proc_manage.h>
-#include <opt-ondemand_manage.h>
+#include "opt-paging.h"
 #include <synch.h>
 #include <types.h>
 
@@ -91,7 +91,7 @@ struct proc {
   struct openfile* open_files[OPEN_MAX];
 #endif
 
-#if OPT_ONDEMAND_MANAGE
+#if OPT_PAGING
 	struct vnode* p_elf;
 #endif
 };

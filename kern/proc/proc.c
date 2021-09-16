@@ -141,7 +141,7 @@ proc_create(const char *name)
 
 	/* VFS fields */
 	proc->p_cwd = NULL;
-#if OPT_ONDEMAND_MANAGE
+#if OPT_PAGING
 	proc->p_elf = NULL;
 #endif
 	return proc;
@@ -175,7 +175,7 @@ struct proc* proc_dup(struct proc* proc){
     new_proc->open_files[i] = proc->open_files[i];
   }
 #endif
-#if OPT_ONDEMAND_MANAGE
+#if OPT_PAGING
 	new_proc->p_elf = proc->p_elf;
 	vnode_incref(new_proc->p_elf);
 #endif
@@ -282,7 +282,7 @@ proc_destroy(struct proc *proc)
 	  sem_destroy(proc->ended_sem);
 	remove_proc(proc->pid);
 #endif
-#if OPT_ONDEMAND_MANAGE
+#if OPT_PAGING
 	vfs_close(proc->p_elf);
 #endif
 	kfree(proc->p_name);

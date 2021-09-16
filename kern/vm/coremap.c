@@ -217,7 +217,7 @@ void free_kpages(vaddr_t addr)
 void vm_tlbshootdown(const struct tlbshootdown *ts)
 {
 	(void)ts;
-	panic("dumbvm tried to do tlb shootdown?!\n");
+	panic("Tried to do tlb shootdown?!\n");
 }
 
 

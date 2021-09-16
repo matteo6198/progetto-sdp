@@ -7,8 +7,6 @@
 #define PAGE_USED (char)2
 
 #define KVADDR_2_PADDR(vaddr) (unsigned long)(vaddr - MIPS_KSEG0)
-#define BITMAP 1
-#define ALLOC_ALL_AT_BOOT 1
 
 #include <types.h>
 #include <lib.h>
@@ -18,7 +16,7 @@
 #include <thread.h>
 #include <pt.h>
 #include <current.h>
-#include <opt-ondemand_manage.h>
+#include "opt-paging.h"
 #include <opt-vm_manage.h>
 
 paddr_t getFreePages(unsigned int n);

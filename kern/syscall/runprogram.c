@@ -45,7 +45,7 @@
 #include <syscall.h>
 #include <test.h>
 
-#include <opt-ondemand_manage.h>
+#include "opt-paging.h"
 
 /*
  * Load program "progname" and start running it in usermode.
@@ -80,7 +80,7 @@ runprogram(char *progname)
 	/* Switch to it and activate it. */
 	proc_setas(as);
 	as_activate();
-#if OPT_ONDEMAND_MANAGE
+#if OPT_PAGING
 	curproc->p_elf = v;
 #endif
 	/* Load the executable. */
@@ -91,7 +91,7 @@ runprogram(char *progname)
 		return result;
 	}
 
-#if !OPT_ONDEMAND_MANAGE
+#if !OPT_PAGING
 	/* Done with the file now. */
 	vfs_close(v);
 #endif

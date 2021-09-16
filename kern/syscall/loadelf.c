@@ -60,12 +60,12 @@
 #include <vnode.h>
 #include <elf.h>
 
-#include "opt-ondemand_manage.h"
-#if OPT_ONDEMAND_MANAGE
+#include "opt-paging.h"
+#if OPT_PAGING
 #include <pt.h>
 #include <vmstats.h>
 #endif
-#if !OPT_ONDEMAND_MANAGE
+#if !OPT_PAGING
 /*
  * Load a segment at virtual address VADDR. The segment in memory
  * extends from VADDR up to (but not including) VADDR+MEMSIZE. The
@@ -248,7 +248,7 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 				ph.p_type);
 			return ENOEXEC;
 		}
-#if OPT_ONDEMAND_MANAGE
+#if OPT_PAGING
 		result = as_define_region(as,
 					  ph.p_vaddr, ph.p_memsz,
 					  ph.p_flags & PF_R,
@@ -267,7 +267,7 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 			return result;
 		}
 	}
-#if !OPT_ONDEMAND_MANAGE
+#if !OPT_PAGING
 	result = as_prepare_load(as);
 	if (result) {
 		return result;
@@ -321,7 +321,7 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 	return 0;
 }
 
-#if OPT_ONDEMAND_MANAGE
+#if OPT_PAGING
 
 int load_page(vaddr_t vaddr, int is_executable){
 	struct addrspace *as = proc_getas();

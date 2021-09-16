@@ -47,6 +47,3 @@ options proc_manage		# enables syscall exit and wait
 # SDP Project
 
 options paging              # General
-options tlb_manage          # Ruggero
-options ondemand_manage    # Matteo
-options swap_manage         # Samuele
