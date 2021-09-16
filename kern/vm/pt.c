@@ -255,6 +255,7 @@ paddr_t pt_getkpages(uint32_t n_pages)
         }
     }
     spinlock_release(&pt_lock);
+    return paddr;
 }
 
 void pt_freekpages(uint32_t n_clusters)
