@@ -229,7 +229,7 @@ paddr_t pt_getkpages(uint32_t n, struct spinlock* memLock)
         free_ppage(i * PAGE_SIZE);
     }
     paddr = getFreePages(n);
-    //KASSERT(paddr != 0);
+    KASSERT(paddr != 0);
     spinlock_release(memLock);
     
     for (i = 0; i < (unsigned int)tmp_nClusters * CLUSTER_SIZE; i++)

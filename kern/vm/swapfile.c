@@ -8,7 +8,7 @@ typedef uint32_t hash_entry;
 
 struct vnode *swapfile;
 
-hash_entry *hash_table = NULL;
+hash_entry hash_table[HASH_SIZE];// = NULL;
 
 
 
@@ -82,14 +82,14 @@ void swap_bootstrap(void)
     int result;
 
     
-    hash_table = kmalloc(HASH_SIZE*sizeof(hash_entry));
+    /*hash_table = kmalloc(HASH_SIZE*sizeof(hash_entry));
 
     if (hash_table == NULL)
     {
         panic("swap_bootstrap: Error allocating hash table\n");
     }
 
-    
+    */
     //open the swapfile
     // "/SWAPFILE" because kernel proc has no cwd
     result = vfs_open((char *)"/SWAPFILE", O_RDWR | O_CREAT | O_TRUNC, 0, &swapfile);
