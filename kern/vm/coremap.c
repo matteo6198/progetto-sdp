@@ -1,14 +1,14 @@
 #include <coremap.h>
 
-static unsigned long *allocated_size;
+static unsigned int *allocated_size;
 static char *allocated_pages;
 static int active = 0;
-static unsigned long nRamFrames = 0;
-static unsigned long kernPages = 0;
+static unsigned int nRamFrames = 0;
+static unsigned int kernPages = 0;
 static struct spinlock memSpinLock = SPINLOCK_INITIALIZER;
 static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 
-static void pageSetFree(unsigned long i)
+static void pageSetFree(unsigned int i)
 {
 #if BITMAP
 	/* setting the bit to 1 means page free */
@@ -17,7 +17,7 @@ static void pageSetFree(unsigned long i)
 	allocated_pages[i] = PAGE_FREE;
 #endif
 }
-void pageSetUsed(unsigned long i)
+void pageSetUsed(unsigned int i)
 {
 #if BITMAP
 	/* clearing the bit means page used */
@@ -26,7 +26,7 @@ void pageSetUsed(unsigned long i)
 	allocated_pages[i] = PAGE_USED;
 #endif
 }
-static int isPageFree(unsigned long i)
+static int isPageFree(unsigned int i)
 {
 #if BITMAP
 	/* check if the bit is 1 */
@@ -36,10 +36,10 @@ static int isPageFree(unsigned long i)
 #endif
 }
 
-paddr_t getFreePages(unsigned long n)
+paddr_t getFreePages(unsigned int n)
 {
 	paddr_t addr = 0;
-	unsigned long i, count;
+	unsigned int i, count;
 	int found = 0;
 	/* page allocation is done in mututal exclusion */
 	//spinlock_acquire(&memSpinLock);
@@ -158,7 +158,7 @@ void vm_bootstrap(void)
 	allocated_pages = kmalloc(nRamFrames * sizeof(char));
 #endif /* BITMAP */
 
-	allocated_size = kmalloc(nRamFrames * sizeof(unsigned long));
+	allocated_size = kmalloc(nRamFrames * sizeof(unsigned int));
 	if (allocated_pages == NULL || allocated_size == NULL)
 	{
 		spinlock_release(&memSpinLock);
@@ -304,7 +304,7 @@ void memstats(void)
 	free_mem = free_pages * PAGE_SIZE;
 	used_mem = nRamFrames * PAGE_SIZE - free_mem;
 	kprintf("Free memory:\t%lu kB\nUsed memory:\t%lu kB\n", free_mem / 1024, used_mem / 1024);
-	kprintf("Kernel memory:\t%lu kB\n", kernPages * PAGE_SIZE / 1024);
+	kprintf("Kernel memory:\t%u kB\n", kernPages * PAGE_SIZE / 1024);
 #else
 	kprintf("Virtual memory is not managed\n");
 #endif
