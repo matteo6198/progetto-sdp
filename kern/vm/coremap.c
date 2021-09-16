@@ -201,13 +201,22 @@ alloc_kpages(unsigned npages)
 	return PADDR_TO_KVADDR(pa);
 }
 
-static void return_mem(void){
-	int i, cnt = 0;
+int return_mem(uint32_t page){
+	int i, cnt = 0, n_alloc;
+	spinlock_acquire(&memSpinLock);
+	/* get number of contiguous pages allocated */
+	n_alloc = allocated_size[page];
+	allocated_size[page] = 0;
+	/* free pages on the bitmap */
+	for (i = page; i < (int)page + n_alloc; i++)
+	{
+		pageSetFree(i);
+	}
 	i = (kernPages - 1);
 	while(i >= 0 && isPageFree(i)){
 		i--;
-		cnt++;
 	}
+	cnt = (kernPages - 1 ) - i;
 	if(cnt / CLUSTER_SIZE >= 2){
 		cnt /= CLUSTER_SIZE;
 		for(i=cnt*CLUSTER_SIZE; i> 0; i--){
@@ -217,39 +226,23 @@ static void return_mem(void){
 	}else{
 		cnt = 0;
 	}
-	if(cnt != 0){
-		pt_freekpages(cnt);
-	}
+	spinlock_release(&memSpinLock);
+	return cnt;
 }
 
 void free_kpages(vaddr_t addr)
 {
-	/* nothing - leak the memory. */
-#if OPT_VM_MANAGE
-	unsigned long page, n_alloc, i;
+	unsigned long page;
 
-	spinlock_acquire(&memSpinLock);
 	if (!active)
 	{
-		spinlock_release(&memSpinLock);
 		return;
 	}
 
 	page = KVADDR_2_PADDR(addr) / PAGE_SIZE;
 	KASSERT(page < nRamFrames);
-	/* get number of contiguous pages allocated */
-	n_alloc = allocated_size[page];
-	allocated_size[page] = 0;
-	/* free pages on the bitmap */
-	for (i = page; i < page + n_alloc; i++)
-	{
-		pageSetFree(i);
-	}
-	// return freed memory to pt system
-	return_mem();
-	spinlock_release(&memSpinLock);
-#endif
-	(void)addr;
+
+	pt_freekpages(page);
 }
 
 void vm_tlbshootdown(const struct tlbshootdown *ts)

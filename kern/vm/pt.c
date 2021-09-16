@@ -258,22 +258,30 @@ paddr_t pt_getkpages(uint32_t n_pages)
     return paddr;
 }
 
-void pt_freekpages(uint32_t n_clusters)
+void pt_freekpages(uint32_t page)
 {
-    unsigned int i;
+    unsigned int i, tmp_start_cluster, n_clusters;
     spinlock_acquire(&pt_lock);
+
+    n_clusters = return_mem(page);
+    if(nClusters == 0){
+        spinlock_release(&pt_lock);
+        return;
+    }
     start_cluster -= n_clusters;
     nClusters += n_clusters;
+    tmp_start_cluster = start_cluster;
     for (i = 0; i < (unsigned int)nClusters * CLUSTER_SIZE; i++)
     {
-        if (pagetable[i] != 0 && PT_DIRTY(pagetable[i]))
+        pt_entry entry = pagetable[i];
+        pagetable[i] = 0;
+        if (entry != 0 && PT_DIRTY(entry))
         {
             // swap out
-            //spinlock_release(&pt_lock);
-            swap_out(PT_V_ADDR(pagetable[i]), PT_P_ADDR(i + start_cluster * CLUSTER_SIZE), PT_PID(pagetable[i]));
-            //spinlock_acquire(&pt_lock);
+            spinlock_release(&pt_lock);
+            swap_out(PT_V_ADDR(entry), PT_P_ADDR(i + tmp_start_cluster * CLUSTER_SIZE), PT_PID(entry));
+            spinlock_acquire(&pt_lock);
         }
-        pagetable[i] = 0;
     }
     tlb_invalidate();
     spinlock_release(&pt_lock);
