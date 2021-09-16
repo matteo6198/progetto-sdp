@@ -42,11 +42,11 @@ paddr_t getFreePages(unsigned int n)
 	unsigned int i, count;
 	int found = 0;
 	/* page allocation is done in mututal exclusion */
-	//spinlock_acquire(&memSpinLock);
+	spinlock_acquire(&memSpinLock);
 
 	if (!active)
 	{
-		//spinlock_release(&memSpinLock);
+		spinlock_release(&memSpinLock);
 		return 0;
 	}
 
@@ -80,7 +80,7 @@ paddr_t getFreePages(unsigned int n)
 		addr = 0;
 	}
 
-	//spinlock_release(&memSpinLock);
+	spinlock_release(&memSpinLock);
 	return addr;
 }
 
@@ -89,30 +89,15 @@ getppages(unsigned long npages)
 {
 	paddr_t addr;
 	spinlock_acquire(&memSpinLock);
-	addr = getFreePages(npages);
-	//spinlock_release(&memSpinLock);
-	if (addr == 0)
-	{
-		if (active)
-		{
-			//unsigned long page, i;
-			//spinlock_acquire(&memSpinLock);
-			addr = pt_getkpages(npages, &memSpinLock);
-			return addr;/*
-			spinlock_acquire(&memSpinLock);
-	        page = addr / PAGE_SIZE;
-	        for (i = page; i < page + npages; i++)
-	        {
-	                pageSetUsed(i);
-	        }
-	        allocated_size[page] = npages;*/	
-		}else{
-			spinlock_acquire(&stealmem_lock);
-			addr = ram_stealmem(npages);
-			spinlock_release(&stealmem_lock);
-		}
+	if (active){
+		spinlock_release(&memSpinLock);
+		addr = pt_getkpages(npages);
+	}else{
+		spinlock_release(&memSpinLock);
+		spinlock_acquire(&stealmem_lock);
+		addr = ram_stealmem(npages);
+		spinlock_release(&stealmem_lock);
 	}
-	spinlock_release(&memSpinLock);
 	return addr;
 
 }
@@ -315,17 +300,17 @@ void free_ppage(paddr_t paddr){
 	KASSERT((paddr & PAGE_FRAME) == paddr);
 
 	page = (unsigned long) paddr / PAGE_SIZE;
-	//spinlock_acquire(&memSpinLock);
+	spinlock_acquire(&memSpinLock);
 
 	if (!active)
 	{
-		//spinlock_release(&memSpinLock);
+		spinlock_release(&memSpinLock);
 		return;
 	}
 	allocated_size[page] = 0;
 	pageSetFree(page);
 
 	kernPages++;
-	//spinlock_release(&memSpinLock);
+	spinlock_release(&memSpinLock);
 
 }
