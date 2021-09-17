@@ -3,7 +3,7 @@
 ## Page table
 
 The page table implemented in this project is an inverted page table that uses a 
-clustered hash table in order to speed up the research of pages.
+clustered hash table in order to speed up the search of pages.
 In fact this hash table is organized in a set of clusters of 4 pages in which each 
 page can be mapped. The hash function adopted returns only the 
 cluster number and the page to be inserted or removed may be found only among the 
@@ -86,7 +86,7 @@ allocated to kernel that now will be able to get the required pages.
 When the kernel will free the pages acquired, if they are enough to form a new user 
 cluster, they are returned to the user memory.
 That process is very expensive since at every operation all the pages in the page 
-table must be swap out since the number of cluster is changed and consequently the 
+table must be swapped out since the number of cluster is changed and consequently the 
 hash function adopted too so, in case of a new lookup in the page table, the searched 
 page will not be found.
-In order to reduce that cost, clusters are returned only if there are more than 2 free clusters at the end of kernel memory.
+In order to reduce that cost, memory is returned to the user only if there are more than 2 free clusters at the end of kernel memory.
