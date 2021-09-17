@@ -36,7 +36,7 @@ There are 3 possible scenarios:
 In order to support the last case, some modifications have been apported to the 
 <code>struct proc</code> in order to insert in it the pointer to the <code>struct
  vnode</code> related to the ELF file of the program. That file is opened when the 
- process is run and it is closed just when the process terminated his execution.
+ process is run and it is closed only when the process has terminated his execution.
 In order to correctly retrieve the correct position in the ELF file of the selected 
 page, some modifications have been apported to the <code>struct addrspace</code>:
 
