@@ -6,7 +6,6 @@ static int active = 0;
 static unsigned int nRamFrames = 0;
 static unsigned int kernPages = 0;
 static struct spinlock memSpinLock = SPINLOCK_INITIALIZER;
-static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 
 static void pageSetFree(unsigned int i)
 {
@@ -81,10 +80,8 @@ getppages(unsigned long npages)
 		spinlock_release(&memSpinLock);
 		addr = pt_getkpages(npages);
 	}else{
-		spinlock_release(&memSpinLock);
-		spinlock_acquire(&stealmem_lock);
 		addr = ram_stealmem(npages);
-		spinlock_release(&stealmem_lock);
+		spinlock_release(&memSpinLock);
 	}
 	return addr;
 
