@@ -67,6 +67,25 @@ function is called in order to write the page to the SWAPFILE, if that bit was n
 the page is simply discarded since it can be easily retrieved from the ELF file of the
 running program.
 
+### SWAPFILE
+
+This file is essential for managing the operations of swap in and swap out of the pages.
+Every page that a process wants to write into memory must already be present on this file,
+and every time a page is read from memory it is also written on the swap file.
+A simple <code>hash table</code> (a preallocated array of uint32_t with size swap_filesize/page_size)
+has been used to track the pages that have been written or read from memory, in order to speed up the
+input/output on the file itself, along with the information of the process that made the request.
+Each entry contains the virtual address of the page and the PID of the 
+relative process, both codified in a single uint32_t: the last
+11 bits are the PID and the other ones are the virtual address.
+The <code>hash_swap</code> function is a simple hash that returns the starting position in the table from which we begin to look
+for the target page in case we want to read it from the file, or for a free position on the
+swapfile if we want to write it. Collisions may happen, if
+the hash function returns an index corresponding to a portion of the file that has already been occupied,
+in this case a linear scan is made from that starting index until we find a free position.
+The file is limited to 9MB, as requested by the specifics, so if the hash table is full (we reached
+the EOF) a call to "panic" is made by the kernel.
+
 ### Kernel memory
 
 In the whole project, the kernel memory is always kept separated from the user one.
