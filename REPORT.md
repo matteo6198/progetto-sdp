@@ -109,3 +109,41 @@ table must be swapped out since the number of cluster is changed and consequentl
 hash function adopted too so, in case of a new lookup in the page table, the searched 
 page will not be found.
 In order to reduce that cost, memory is returned to the user only if there are more than 2 free clusters at the end of kernel memory.
+
+
+## TLB
+
+The TLB in System/161 includes 64 entries. Each entry is a 64-bit value which can be split
+in two different parts: high and low.
+The higher part is filled with the virtual page number, it may be followed by the ASID but
+in this project we don't use that field. The lower part is filled with the physical page number
+and four 1-bit fields: global, valid, dirty, nocache.
+Global and nocache fields are not used in this project.
+The valid bit is used to represent a valid translation from virtual memory to physical one, the
+dirty bit is used to represent a memory reference with write permission.
+If the dirty bit is not set and a write operation is attempted, the MMU generates a EX MOD exception.
+
+### TLB Replacement Policy
+
+The policy adopted to handle entries replacement is the one specified in the requirements file.
+With the Round-Robin replacement, we can imagine the TLB as a circular buffer, in which each new entry
+is inserted after the last inserted entry. When the TLB fills, the counter starts again from the first position.
+When a TLB invalidation occurs, there is no need to reset the counter.
+
+### TLB Invalidation
+
+As in the DUMBVM system, every time a context-switch happens,
+the kernel calls <code>as_activate()</code>
+which invalidates the TLB. In this way every time a process runs,
+we can ensure that every valid TLB entry is owned
+by the current process and therefore we can avoid to use the ASID field.
+Other TLB invalidations happen when the kernel gets/frees memory.
+
+### Read-only text segment
+
+In order to ensure that each text segment is read only, TLB entries must be set properly.
+This is accomplished through the <code>dirty bit</code> mentioned before.
+The first time that a process makes an access to a page belonging to the text segment,
+a new entry must be inserted in the TLB. The dirty bit is set if and only if the page
+can be written. Thus, if the process tries to write a page that is in the TLB without the
+dirty bit set, the MMU generates a EX MOD exception, than the kernel kills the process.
