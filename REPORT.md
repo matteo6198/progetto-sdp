@@ -70,8 +70,11 @@ running program.
 ### SWAPFILE
 
 This file is essential for managing the operations of swap in and swap out of the pages.
-Every page that a process wants to write into memory must already be present on this file,
-and every time a page is read from memory it is also written on the swap file.
+Every time a process needs to find a page in case of a page fault, it first looks for that
+page in the swap file. If it's found, it's read from there; if it's not present in the file,
+it's looked for and read in the ELF.
+Instead, if a free frame is needed in memory we look for a victim page,
+Then, once the victim is selected, if that page can be written (as it owns the writing rights) it is written to the swapfile; else, if the page is readonly, it is simply discarded.
 A simple <code>hash table</code> (a preallocated array of uint32_t with size swap_filesize/page_size)
 has been used to track the pages that have been written or read from memory, in order to speed up the
 input/output on the file itself, along with the information of the process that made the request.
