@@ -42,7 +42,7 @@ page, some modifications have been apported to the <code>struct addrspace</code>
 
 - the information relative to the physical address of the segments and the stack have
  been removed
-- a new filed for each segment has been inserted in order to maintain the offset in 
+- a new field for each segment has been inserted in order to maintain the offset in 
 the ELF file of the start of the segment
 - a new field for each segment has been inserted in order to keep the start of the 
 virtual address of the segment in the ELF file (which may be not page aligned)
