@@ -71,23 +71,28 @@ running program.
 
 This file is essential for managing the operations of swap in and swap out of the pages.
 Every time a process needs to find a page in case of a page fault, it first looks for that
-page in the swap file. If it's found, it's read from there; if it's not present in the file,
+page in the SWAPFILE. If it's found, it's read from there; if it's not present in the file,
 it's looked for and read in the ELF.
 Instead, if a free frame is needed in memory we look for a victim page,
-Then, once the victim is selected, if that page can be written (as it owns the writing rights) it is written to the swapfile; else, if the page is readonly, it is simply discarded.
+Then, once the victim is selected, if that page can be written (as it owns the writing rights) it is written to the SWAPFILE
+since it may have been modified by the current process; else, if the page is readonly, it is simply discarded.
 A simple <code>hash table</code> (a preallocated array of uint32_t with size swap_filesize/page_size)
-has been used to track the pages that have been written or read from memory, in order to speed up the
-input/output on the file itself, along with the information of the process that made the request.
-Each entry contains the virtual address of the page and the PID of the 
+has been used to track the pages that have been written into the SWAPFILE in order to speed up the
+input/output on the file itself. Each entry contains the virtual address of the page and the PID of the 
 relative process, both codified in a single uint32_t: the last
-11 bits are the PID and the other ones are the virtual address.
+11 bits are the PID and 20 bits are reserved for the virtual address.
+
+|Virtual address|Empty| PID|
+|:--:|:--:|:--:|
+|20 bit| 1 bit|11 bit|
+
 The <code>hash_swap</code> function is a simple hash that returns the starting position in the table from which we begin to look
 for the target page in case we want to read it from the file, or for a free position on the
-swapfile if we want to write it. Collisions may happen, if
-the hash function returns an index corresponding to a portion of the file that has already been occupied,
-in this case a linear scan is made from that starting index until we find a free position.
-The file is limited to 9MB, as requested by the specifics, so if the hash table is full (we reached
-the EOF) a call to "panic" is made by the kernel.
+SWAPFILE if we want to write it. Collisions may happen, if
+the hash function returns an index corresponding to a portion of the file that was already occupied,
+in this case a linear scan is made starting from that index until we find a free position.
+The file is limited to 9 MB, as requested by the specifics, so if the hash table is full (the SWAPFILE has reached its 
+maximum size) a call to "panic" is made by the kernel.
 
 ### Kernel memory
 
@@ -124,7 +129,7 @@ and four 1-bit fields: global, valid, dirty, nocache.
 Global and nocache fields are not used in this project.
 The valid bit is used to represent a valid translation from virtual memory to physical one, the
 dirty bit is used to represent a memory reference with write permission.
-If the dirty bit is not set and a write operation is attempted, the MMU generates a EX MOD exception.
+If the dirty bit is not set and a write operation is attempted, the MMU generates an EX MOD exception.
 
 ### TLB Replacement Policy
 
@@ -149,4 +154,4 @@ This is accomplished through the <code>dirty bit</code> mentioned before.
 The first time that a process makes an access to a page belonging to the text segment,
 a new entry must be inserted in the TLB. The dirty bit is set if and only if the page
 can be written. Thus, if the process tries to write a page that is in the TLB without the
-dirty bit set, the MMU generates a EX MOD exception, than the kernel kills the process.
+dirty bit set, the MMU generates a EX MOD exception, then the kernel kills the process.
