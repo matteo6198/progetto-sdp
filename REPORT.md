@@ -74,7 +74,7 @@ Every time a process needs to find a page in case of a page fault, it first look
 page in the SWAPFILE. If it's found, it's read from there; if it's not present in the file,
 it's looked for and read in the ELF.
 Instead, if a free frame is needed in memory we look for a victim page,
-Then, once the victim is selected, if that page can be written (as it owns the writing rights) it is written to the SWAPFILE
+Then, once the victim is selected, if that page can be written (it owns the writing rights) it is written to the SWAPFILE
 since it may have been modified by the current process; else, if the page is readonly, it is simply discarded.
 A simple <code>hash table</code> (a preallocated array of uint32_t with size swap_filesize/page_size)
 has been used to track the pages that have been written into the SWAPFILE in order to speed up the
